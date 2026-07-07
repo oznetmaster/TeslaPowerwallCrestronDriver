@@ -1,0 +1,13 @@
+{
+  "standardVersion": "1.0",
+  "packageType": "CrestronHomeDriver",
+  "driverPlatform": "Crestron Home",
+  "payloadType": "pkg",
+  "payloadFile": "TeslaPowerwallCrestronDriver.pkg",
+  "containsManagedDllPayload": false,
+  "packageId": "CrestronHomeDriver.Tesla.Powerwall",
+  "packageVersion": "$packageVersion$",
+  "displayName": "Tesla Powerwall Driver",
+  "vendor": "Tesla",
+  "driverCategory": "Energy Automation"
+}

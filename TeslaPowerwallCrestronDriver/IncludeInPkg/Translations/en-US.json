@@ -1,0 +1,19 @@
+{
+  "MainPageTitle": "Tesla Powerwall %s",
+  "SolarLabel": "Solar",
+  "GridLabel": "Grid",
+  "PowerwallLabel": "Powerwall",
+  "DetailsTitle": "Details",
+  "StatusTitle": "Status",
+  "BackupReserveLabel": "Backup Reserve",
+  "GridChargingLabel": "Charge From Grid",
+  "OperationModeHeaderLabel": "Operation Mode",
+  "SelfPoweredButtonLabel": "Self Powered",
+  "BackupOnlyButtonLabel": "Backup Only",
+  "AutonomousButtonLabel": "Autonomous",
+  "GridExportHeaderLabel": "Grid Export",
+  "BatteryOkButtonLabel": "Battery OK",
+  "PvOnlyButtonLabel": "Solar Only",
+  "NeverButtonLabel": "Never",
+  "RefreshNowButtonLabel": "Refresh Now"
+}

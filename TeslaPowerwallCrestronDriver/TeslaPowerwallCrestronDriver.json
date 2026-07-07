@@ -1,0 +1,79 @@
+{
+  "SchemaVersion": "2.0",
+  "GeneralInformation": {
+    "MinSdkVersion": "27.0000.0000",
+    "Guid": "14b8831b-9591-49e9-b197-b095752d7e24",
+    "DeviceType": "Energy Automation",
+    "Manufacturer": "Tesla",
+    "BaseModel": "Tesla Powerwall",
+    "OtherSupportedModels": [],
+    "SupportedSeries": [
+      "Powerwall 2",
+      "Powerwall+",
+      "Powerwall 3"
+    ],
+    "DependencyGroup": "",
+    "Developer": {
+      "Company": "Neil Colvin",
+      "Contact": "Neil Colvin",
+      "Email": "",
+      "Website": "",
+      "PhoneNumber": ""
+    },
+    "DriverVersion": "1.0.000.0007",
+    "VersionDate": "2026-07-07 04:35:37.886"
+  },
+  "ConfigurationSteps": {
+    "Items": [
+      {
+        "Id": "Email",
+        "Title": "Tesla Account Email",
+        "Description": "Label only; not sent to Tesla. Identifies which account the cached credentials below belong to.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "String"
+      },
+      {
+        "Id": "RefreshToken",
+        "Title": "Tesla Refresh Token",
+        "Description": "OAuth refresh token for the Tesla account, obtained using an external setup tool. The library automatically obtains and renews the access token from this refresh token on every connection; the driver updates this value here if Tesla rotates it.",
+        "Required": true,
+        "Persistent": true,
+        "Masked": true,
+        "ValueType": "String"
+      },
+      {
+        "Id": "SiteId",
+        "Title": "Tesla Energy Site ID",
+        "Description": "Optional. Enter the numeric Tesla energy site ID, or the site's name exactly as shown in the Tesla app/account (the driver looks up the matching ID automatically). Leave blank to use the account's first/default energy site.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "String"
+      },
+      {
+        "Id": "RefreshIntervalSeconds",
+        "Title": "Refresh Interval Seconds",
+        "Description": "How often the driver refreshes Powerwall status and power data from the Tesla cloud.",
+        "Required": false,
+        "MinValue": 30,
+        "MaxValue": 3600,
+        "Persistent": true,
+        "ValueType": "Number",
+        "DefaultValue": "60"
+      }
+    ],
+    "Steps": [
+      {
+        "StepId": "CloudAccountConfiguration",
+        "Items": [
+          "Email",
+          "RefreshToken",
+          "SiteId",
+          "RefreshIntervalSeconds"
+        ],
+        "NextStep": null
+      }
+    ],
+    "FirstStep": "CloudAccountConfiguration"
+  }
+}

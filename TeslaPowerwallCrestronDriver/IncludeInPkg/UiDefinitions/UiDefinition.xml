@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<uidefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://prd-use-rad-assets.azurewebsites.net/ExtensionsSchemaDefinition.xsd">
+	<version ver="2.0" />
+	<tile icon="#icBatteryLow" status="{tileDisplay}" navigation="show:MainPage" showinhomepage="#true" showinroompage="#true"/>
+	<layouts>
+		<layout id="MainPage" title="^MainPageTitle|{siteNameDisplay}" isdefaultlayout="#true">
+			<controls>
+				<statusandnavigation id="SolarStatusRow" label="^SolarLabel" status="{solarPowerDisplay}" statusicon="#icSun" />
+				<statusandnavigation id="GridStatusRow" label="^GridLabel" status="{gridPowerDisplay}" statusicon="#icQuickAction" />
+				<statusandnavigation id="PowerwallStatusRow" label="^PowerwallLabel" status="{batteryLevelDisplay}" statusicon="#icBatteryLow" />
+				<textdisplay id="DetailsDisplay" title="^DetailsTitle" line1label="{batteryPowerDisplay}" line2label="{loadPowerDisplay}" line3label="{gridStatusDisplay}" />
+				<textdisplay id="StatusDisplay" title="^StatusTitle" line1label="{statusSummary}" line2label="{operationModeDisplay}" line3label="{gridExportModeDisplay}" />
+				<raiselowerwithtext id="BackupReserveControl" label="^BackupReserveLabel" value="{backupReservePercent}" valueformat="{backupReserveValueFormat}" />
+				<toggle id="GridChargingToggle" label="^GridChargingLabel" value="{gridChargingEnabled}" />
+				<subheader id="OperationModeHeader" label="^OperationModeHeaderLabel" />
+				<buttongroup>
+					<button id="SetModeSelfPoweredButton" label="^SelfPoweredButtonLabel" action="command:setOperationModeSelfConsumption" />
+					<button id="SetModeBackupButton" label="^BackupOnlyButtonLabel" action="command:setOperationModeBackup" />
+					<button id="SetModeAutonomousButton" label="^AutonomousButtonLabel" action="command:setOperationModeAutonomous" />
+				</buttongroup>
+				<subheader id="GridExportHeader" label="^GridExportHeaderLabel" />
+				<buttongroup>
+					<button id="SetExportBatteryOkButton" label="^BatteryOkButtonLabel" action="command:setGridExportBatteryOk" />
+					<button id="SetExportPvOnlyButton" label="^PvOnlyButtonLabel" action="command:setGridExportPvOnly" />
+					<button id="SetExportNeverButton" label="^NeverButtonLabel" action="command:setGridExportNever" />
+				</buttongroup>
+				<button id="RefreshNowButton" label="^RefreshNowButtonLabel" action="command:refreshNow" />
+			</controls>
+		</layout>
+	</layouts>
+	<alerts/>
+</uidefinition>
