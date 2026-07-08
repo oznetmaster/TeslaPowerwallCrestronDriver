@@ -1,29 +1,50 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <uidefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://prd-use-rad-assets.azurewebsites.net/ExtensionsSchemaDefinition.xsd">
-	<version ver="2.0" />
-	<tile icon="#icBatteryLow" status="{tileDisplay}" navigation="show:MainPage" showinhomepage="#true" showinroompage="#true"/>
+	<version ver="3.0" />
+	<tile icon="{tileIcon}" status="{tileDisplay}" navigation="show:MainPage" showinhomepage="#true" showinroompage="#true"/>
 	<layouts>
 		<layout id="MainPage" title="^MainPageTitle|{siteNameDisplay}" isdefaultlayout="#true">
 			<controls>
+				<statusandnavigation id="HouseStatusRow" label="^HouseLabel" status="{loadPowerDisplay}" statusicon="{tileIcon}" />
 				<statusandnavigation id="SolarStatusRow" label="^SolarLabel" status="{solarPowerDisplay}" statusicon="#icSun" />
 				<statusandnavigation id="GridStatusRow" label="^GridLabel" status="{gridPowerDisplay}" statusicon="#icQuickAction" />
 				<statusandnavigation id="PowerwallStatusRow" label="^PowerwallLabel" status="{batteryLevelDisplay}" statusicon="#icBatteryLow" />
-				<textdisplay id="DetailsDisplay" title="^DetailsTitle" line1label="{batteryPowerDisplay}" line2label="{loadPowerDisplay}" line3label="{gridStatusDisplay}" />
 				<textdisplay id="StatusDisplay" title="^StatusTitle" line1label="{statusSummary}" line2label="{operationModeDisplay}" line3label="{gridExportModeDisplay}" />
+				<statusandnavigation id="EnergyStatusRow" label="^EnergyButtonLabel" status="{energyValueDisplay}" navigation="show:EnergyPage" />
+				<statusandnavigation id="ImpactStatusRow" label="^ImpactButtonLabel" status="{impactSummaryDisplay}" statusicon="#icInfo" navigation="show:ImpactPage" />
+				<button id="OpenSettingsButton" label="^SettingsButtonLabel" navigation="show:SettingsPage" />
+			</controls>
+		</layout>
+		<layout id="EnergyPage" title="^EnergyPageTitle|{energyPeriodLabel}" subtitle="{siteNameDisplay}">
+			<controls>
+				<selectorbutton id="EnergyPeriodSelector" label="^PeriodHeaderLabel" value="{energyPeriod}" />
+				<buttongroup visible="{energyPeriodOffsetVisible}">
+					<button id="EnergyPeriodBackButton" icon="#icArrowLeft" action="command:energyPeriodOffsetBack" />
+					<button id="EnergyPeriodCurrentButton" label="{energyPeriodOffsetFormat}" />
+					<button id="EnergyPeriodForwardButton" icon="#icArrowRight" action="command:energyPeriodOffsetForward" enabled="{energyPeriodForwardEnabled}" />
+				</buttongroup>
+				<selectorbutton id="EnergyTypeSelector" label="^EnergyTypeHeaderLabel" value="{energyType}" />
+				<textdisplay id="EnergyDetailsDisplay" title="^EnergyDetailsTitle" line1label="{energyValueDisplay}" line2label="{energyDetailDisplay}" line3label="{energySummaryDisplay}" enabled="{energyContentEnabled}" />
+			</controls>
+		</layout>
+		<layout id="ImpactPage" title="^ImpactPageTitle|{impactPeriodLabel}" subtitle="{siteNameDisplay}">
+			<controls>
+				<selectorbutton id="ImpactPeriodSelector" label="^PeriodHeaderLabel" value="{impactPeriod}" />
+				<buttongroup visible="{impactPeriodOffsetVisible}">
+					<button id="ImpactPeriodBackButton" icon="#icArrowLeft" action="command:impactPeriodOffsetBack" />
+					<button id="ImpactPeriodCurrentButton" label="{impactPeriodOffsetFormat}" />
+					<button id="ImpactPeriodForwardButton" icon="#icArrowRight" action="command:impactPeriodOffsetForward" enabled="{impactPeriodForwardEnabled}" />
+				</buttongroup>
+				<radialgauge id="SelfPoweredGauge" label="^SelfPoweredGaugeLabel" radialvalue="{selfPoweredPercent}" line1label="{impactSummaryDisplay}" line2label="{impactHomeUsageDisplay}" line3label="{impactGridUsageDisplay}" gaugefillcolor="#Yellow" enabled="{impactContentEnabled}" />
+			</controls>
+		</layout>
+		<layout id="SettingsPage" title="^SettingsPageTitle" subtitle="{siteNameDisplay}">
+			<controls>
 				<raiselowerwithtext id="BackupReserveControl" label="^BackupReserveLabel" value="{backupReservePercent}" valueformat="{backupReserveValueFormat}" />
 				<toggle id="GridChargingToggle" label="^GridChargingLabel" value="{gridChargingEnabled}" />
-				<subheader id="OperationModeHeader" label="^OperationModeHeaderLabel" />
-				<buttongroup>
-					<button id="SetModeSelfPoweredButton" label="^SelfPoweredButtonLabel" action="command:setOperationModeSelfConsumption" />
-					<button id="SetModeBackupButton" label="^BackupOnlyButtonLabel" action="command:setOperationModeBackup" />
-					<button id="SetModeAutonomousButton" label="^AutonomousButtonLabel" action="command:setOperationModeAutonomous" />
-				</buttongroup>
-				<subheader id="GridExportHeader" label="^GridExportHeaderLabel" />
-				<buttongroup>
-					<button id="SetExportBatteryOkButton" label="^BatteryOkButtonLabel" action="command:setGridExportBatteryOk" />
-					<button id="SetExportPvOnlyButton" label="^PvOnlyButtonLabel" action="command:setGridExportPvOnly" />
-					<button id="SetExportNeverButton" label="^NeverButtonLabel" action="command:setGridExportNever" />
-				</buttongroup>
+				<toggle id="StormWatchToggle" label="^StormWatchLabel" value="{stormWatchEnabled}" />
+				<selectorbutton id="OperationModeSelector" label="^OperationModeHeaderLabel" value="{operationMode}" />
+				<selectorbutton id="GridExportSelector" label="^GridExportHeaderLabel" value="{gridExportMode}" />
 				<button id="RefreshNowButton" label="^RefreshNowButtonLabel" action="command:refreshNow" />
 			</controls>
 		</layout>

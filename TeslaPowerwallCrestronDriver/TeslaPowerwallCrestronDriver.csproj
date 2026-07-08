@@ -31,9 +31,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="TeslaPowerwallLibrary" Version="1.0.2" />
+		<PackageReference Include="TeslaPowerwallLibrary" Version="1.1.1" />
 		<PackageReference Include="Crestron.DeviceDrivers.DevKit" Version="27.0.24" />
-		<PackageReference Include="Crestron.SimplSharp.SDK.Library" Version="2.21.257" />
+		<PackageReference Include="Crestron.SimplSharp.SDK.Library" Version="2.21.274" />
 		<PackageReference Include="Hafner.Compatibility.MetaPackage" Version="1.9.0" />
 	</ItemGroup>
 
