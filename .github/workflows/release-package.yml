@@ -100,24 +100,6 @@ jobs:
         id: package_version
         shell: pwsh
         run: |
-          $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'TeslaPowerwallCrestronDriver\TeslaPowerwallCrestronDriver.json'
-          if (-not (Test-Path $manifestPath)) {
-            throw "Driver manifest was not found at '$manifestPath'."
-          }
-
-          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
-          $driverVersion = $manifest.GeneralInformation.DriverVersion
-          if ([string]::IsNullOrWhiteSpace($driverVersion)) {
-            throw 'DriverVersion is missing from the driver manifest.'
-          }
-
-          $match = [regex]::Match($driverVersion, '^(?<major>\d+)\.(?<minor>\d+)\.(?<release>\d+)\.(?<build>\d+)$')
-          if (-not $match.Success) {
-            throw "DriverVersion '$driverVersion' does not contain four numeric components."
-          }
-
-          $releaseVersion = '{0}.{1}.{2}' -f $match.Groups['major'].Value, $match.Groups['minor'].Value, ([int]$match.Groups['release'].Value + 1)
-
           $refName = if ($env:GITHUB_EVENT_NAME -eq 'release' -and $env:GITHUB_EVENT_PATH) {
             $event = Get-Content $env:GITHUB_EVENT_PATH | ConvertFrom-Json
             $event.release.tag_name
@@ -126,8 +108,33 @@ jobs:
             $env:GITHUB_REF_NAME
           }
 
-          if (-not [string]::IsNullOrWhiteSpace($refName)) {
-            $tagVersion = $refName.TrimStart('v', 'V')
+          $tagVersion = if (-not [string]::IsNullOrWhiteSpace($refName)) { $refName.TrimStart('v', 'V') } else { $null }
+
+          if ($tagVersion -match '^\d+\.\d+\.\d+-[0-9A-Za-z.-]+$') {
+            # Prerelease-suffixed tag (e.g. v0.1.0-preview): publish this exact version verbatim so
+            # NuGet/the package receive the prerelease version, bypassing the manifest-derived release
+            # version and its consistency check below (which only applies to plain major.minor.patch tags).
+            $releaseVersion = $tagVersion
+          }
+          else {
+            $manifestPath = Join-Path $env:GITHUB_WORKSPACE 'TeslaPowerwallCrestronDriver\TeslaPowerwallCrestronDriver.json'
+            if (-not (Test-Path $manifestPath)) {
+              throw "Driver manifest was not found at '$manifestPath'."
+            }
+
+            $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+            $driverVersion = $manifest.GeneralInformation.DriverVersion
+            if ([string]::IsNullOrWhiteSpace($driverVersion)) {
+              throw 'DriverVersion is missing from the driver manifest.'
+            }
+
+            $match = [regex]::Match($driverVersion, '^(?<major>\d+)\.(?<minor>\d+)\.(?<release>\d+)\.(?<build>\d+)$')
+            if (-not $match.Success) {
+              throw "DriverVersion '$driverVersion' does not contain four numeric components."
+            }
+
+            $releaseVersion = '{0}.{1}.{2}' -f $match.Groups['major'].Value, $match.Groups['minor'].Value, ([int]$match.Groups['release'].Value + 1)
+
             if ($tagVersion -match '^\d+\.\d+\.\d+$' -and $tagVersion -ne $releaseVersion) {
               throw "GitHub tag version '$tagVersion' does not match expected Release version '$releaseVersion' derived from pre-build DriverVersion '$driverVersion'."
             }
