@@ -16,6 +16,26 @@ The driver connects to a single Tesla Powerwall energy site through the [TeslaPo
 
 ---
 
+## Supported Connection Modes
+
+This driver currently connects to Tesla using one mode, via `TeslaPowerwallLibrary`:
+
+### Tesla Owner API (Cloud)
+
+Uses Tesla's unofficial, undocumented Owner API. Requires a one-time login via the companion `TeslaPowerwallLibrary.Setup` tool (see [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below), using your own Tesla account credentials via Tesla's own login page — this driver never sees or stores your password.
+
+⚠️ **Stability notice:** The Owner API is unofficial and undocumented. As of July 2026, Tesla has begun deprecating Owner API access for **vehicle** endpoints (confirmed via multiple independent reports and Tesla's own error responses pointing to the official Fleet API). Energy/Powerwall endpoints appear unaffected at this time, but there is no guarantee this will remain the case. If Owner API access breaks for your site, please open an issue on this repository.
+
+### Not Yet Supported
+
+- **Local Mode (Powerwall 2 / Powerwall+ only)** — `TeslaPowerwallLibrary` can connect directly to a Gateway 2's local REST API over your home LAN, but this driver does not yet expose it as a configuration option. Not supported on Powerwall 3 in any case, since PW3 replaces this local API with TEDAPI.
+- **Fleet API (official)** — Tesla's officially supported, documented API. Not yet implemented in `TeslaPowerwallLibrary`. It covers live status and control (backup reserve, operating mode, Storm Watch) fully, but its historical `calendar_history` endpoint has no equivalent to the Owner API's `self_consumption`, `soe`, or `power` history, so switching entirely to Fleet API would mean losing that historical data.
+- **TEDAPI (Powerwall 3 local access)** — Scaffolded in `TeslaPowerwallLibrary` but not yet complete; requires physical/network access to the Powerwall 3's isolated local interface.
+
+See the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository for the underlying library's full roadmap and known issues.
+
+---
+
 ## Features
 
 - Live house, solar, grid, and Powerwall power flow on the Main page
