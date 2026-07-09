@@ -24,7 +24,33 @@
 					<button id="EnergyPeriodForwardButton" icon="#icArrowRight" action="command:energyPeriodOffsetForward" enabled="{energyPeriodForwardEnabled}" />
 				</buttongroup>
 				<selectorbutton id="EnergyTypeSelector" label="^EnergyTypeHeaderLabel" value="{energyType}" />
-				<textdisplay id="EnergyDetailsDisplay" title="^EnergyDetailsTitle" line1label="{energyValueDisplay}" line2label="{energyDetailDisplay}" line3label="{energySummaryDisplay}" enabled="{energyContentEnabled}" />
+				<textdisplay id="EnergyDetailsDisplay" title="^EnergyDetailsTitle" line1label="{energyValueDisplay}" line2label="{energyDetailDisplay}" line3label="{energySummaryDisplay}" />
+				<controlgroup visible="{energyBreakdownVisible}">
+					<statusandnavigation id="EnergyRow1" label="{energyRow1Label}" status="{energyRow1Value}" statusicon="{energyRow1Icon}" visible="{energyRow1Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow2" label="{energyRow2Label}" status="{energyRow2Value}" statusicon="{energyRow2Icon}" visible="{energyRow2Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow3" label="{energyRow3Label}" status="{energyRow3Value}" statusicon="{energyRow3Icon}" visible="{energyRow3Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow4" label="{energyRow4Label}" status="{energyRow4Value}" statusicon="{energyRow4Icon}" visible="{energyRow4Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow5" label="{energyRow5Label}" status="{energyRow5Value}" statusicon="{energyRow5Icon}" visible="{energyRow5Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow6" label="{energyRow6Label}" status="{energyRow6Value}" statusicon="{energyRow6Icon}" visible="{energyRow6Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow7" label="{energyRow7Label}" status="{energyRow7Value}" statusicon="{energyRow7Icon}" visible="{energyRow7Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow8" label="{energyRow8Label}" status="{energyRow8Value}" statusicon="{energyRow8Icon}" visible="{energyRow8Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow9" label="{energyRow9Label}" status="{energyRow9Value}" statusicon="{energyRow9Icon}" visible="{energyRow9Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow10" label="{energyRow10Label}" status="{energyRow10Value}" statusicon="{energyRow10Icon}" visible="{energyRow10Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow11" label="{energyRow11Label}" status="{energyRow11Value}" statusicon="{energyRow11Icon}" visible="{energyRow11Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow12" label="{energyRow12Label}" status="{energyRow12Value}" statusicon="{energyRow12Icon}" visible="{energyRow12Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow13" label="{energyRow13Label}" status="{energyRow13Value}" statusicon="{energyRow13Icon}" visible="{energyRow13Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow14" label="{energyRow14Label}" status="{energyRow14Value}" statusicon="{energyRow14Icon}" visible="{energyRow14Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow15" label="{energyRow15Label}" status="{energyRow15Value}" statusicon="{energyRow15Icon}" visible="{energyRow15Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow16" label="{energyRow16Label}" status="{energyRow16Value}" statusicon="{energyRow16Icon}" visible="{energyRow16Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow17" label="{energyRow17Label}" status="{energyRow17Value}" statusicon="{energyRow17Icon}" visible="{energyRow17Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow18" label="{energyRow18Label}" status="{energyRow18Value}" statusicon="{energyRow18Icon}" visible="{energyRow18Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow19" label="{energyRow19Label}" status="{energyRow19Value}" statusicon="{energyRow19Icon}" visible="{energyRow19Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow20" label="{energyRow20Label}" status="{energyRow20Value}" statusicon="{energyRow20Icon}" visible="{energyRow20Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow21" label="{energyRow21Label}" status="{energyRow21Value}" statusicon="{energyRow21Icon}" visible="{energyRow21Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow22" label="{energyRow22Label}" status="{energyRow22Value}" statusicon="{energyRow22Icon}" visible="{energyRow22Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow23" label="{energyRow23Label}" status="{energyRow23Value}" statusicon="{energyRow23Icon}" visible="{energyRow23Visible}" enabled="{energyContentEnabled}" />
+					<statusandnavigation id="EnergyRow24" label="{energyRow24Label}" status="{energyRow24Value}" statusicon="{energyRow24Icon}" visible="{energyRow24Visible}" enabled="{energyContentEnabled}" />
+				</controlgroup>
 			</controls>
 		</layout>
 		<layout id="ImpactPage" title="^ImpactPageTitle|{impactPeriodLabel}" subtitle="{siteNameDisplay}">
