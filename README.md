@@ -10,7 +10,7 @@ Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent
 
 ## Driver Architecture
 
-This driver is a **Crestron Home energy-automation Entity V2 driver** implemented on the **Crestron Home SDK V2 Entity Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
+This driver is a **Crestron Home energy-automation Entity V2 driver** implemented on the **Crestron Home SDK Entity V2 Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
 
 The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using its Tesla Owners (cloud) API support. Only a Tesla account OAuth refresh token is required — the library automatically derives and renews the access token from it on every connection.
 
