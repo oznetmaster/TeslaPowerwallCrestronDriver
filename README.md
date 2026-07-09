@@ -1,0 +1,138 @@
+# TeslaPowerwallCrestronDriver
+
+A **Crestron Home** extension driver that integrates a **Tesla Powerwall** energy site via the Tesla Owners (cloud) API, providing live power flow, battery status, energy history, and site control from the Crestron Home app.
+
+Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent, unofficial driver and is not affiliated with, endorsed by, or sponsored by Tesla, Inc. Crestron and Crestron Home are trademarks or registered trademarks of Crestron Electronics, Inc. This project is not affiliated with, endorsed by, or sponsored by Crestron Electronics, Inc.
+
+[![License: MIT + Commons Clause](https://img.shields.io/badge/License-MIT%20%2B%20Commons%20Clause-blue.svg)](LICENSE)
+
+---
+
+## Driver Architecture
+
+This driver is a **Crestron Home energy-automation extension driver** implemented on the **Crestron Home SDK V2 Entity Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
+
+The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using its Tesla Owners (cloud) API support. Only a Tesla account OAuth refresh token is required — the library automatically derives and renews the access token from it on every connection.
+
+---
+
+## Features
+
+- Live house, solar, grid, and Powerwall power flow on the Main page
+- Battery level, backup reserve, operation mode, and grid export status
+- Energy page with Day/Week/Month/Year/Lifetime period selection, back/forward period navigation, and a per-sub-period breakdown (hourly/daily/weekly/monthly rows depending on the selected period)
+- Impact page showing self-powered percentage, home usage, and grid usage for the selected period
+- Settings page to adjust backup reserve, grid charging, Storm Watch, operation mode, and grid export mode directly from Crestron Home
+- Automatic background polling with a configurable refresh interval
+- Manual "Refresh Now" command
+- Programmable commands and events for the Crestron Home programming environment (grid status changed to backup, grid status restored, Storm Watch activated/deactivated, battery reserve low, battery fully charged)
+
+---
+
+## Prerequisites
+
+| Requirement | Details |
+|---|---|
+| Crestron Home processor | Running a firmware version compatible with extension drivers |
+| Tesla account | Must have one or more Powerwalls linked to the account |
+| Tesla OAuth refresh token | Obtained using the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) login tool — see [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below |
+
+---
+
+## Installation
+
+The best way to download and install this driver on a Crestron Home system is to use the [Crestron Home Driver Feed Installer](https://github.com/oznetmaster/Crestron-Home-Driver-Feed-Installer) repository and application.
+
+If you prefer to install manually, use the attached `.pkg` asset from the relevant GitHub Release. The automatic GitHub `Source code (zip)` and `Source code (tar.gz)` assets are repository snapshots, not installable Crestron driver packages.
+
+NuGet package availability: this driver is also published as the `CrestronHomeDriver.Tesla.Powerwall` NuGet package. This NuGet package conforms to the **Crestron Home Driver NuGet Publishing Standard v1**. It is a distribution wrapper for the final `.pkg` artifact, includes the required `crestron-driver-package.json` manifest, and is not intended as a direct DLL reference package.
+
+Crestron Home Driver NuGet Publishing Standard v1 is **not** an official Crestron product or specification. It is an open source packaging standard created to facilitate community distribution and discovery of Crestron Home drivers through NuGet.
+
+1. Download the generated `.pkg` asset from the GitHub Release, or build it yourself using the instructions in [Building from Source](#building-from-source).
+2. Upload the `.pkg` file to your Crestron Home processor manually (for example via SFTP to `/user/ThirdPartyDrivers/Import`).
+3. In the Crestron Home configuration UI, add a new device and select the **Tesla Powerwall** driver.
+4. Configure the driver using the values below.
+
+### Configuration
+
+| Field | Description |
+|---|---|
+| Tesla Account Email | Optional, label only. Not sent to Tesla; just identifies which account the refresh token below belongs to. |
+| Tesla Refresh Token | Required. OAuth refresh token for the Tesla account — see [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below. |
+| Tesla Energy Site ID | Optional. Numeric Tesla energy site ID, or the site's name exactly as shown in the Tesla app/account. Leave blank to use the account's first/default energy site. |
+| Refresh Interval Seconds | How often the driver refreshes Powerwall status and power data from the Tesla cloud. 30-3600 seconds; default 60. |
+
+### Obtaining a Tesla Refresh Token
+
+This driver authenticates to Tesla exclusively through the Tesla Owners cloud API, so it needs an OAuth refresh token for your Tesla account before it can connect. Tesla's login flow requires an interactive browser sign-in, which isn't something a Crestron Home driver can perform on its own, so token retrieval is handled by a companion tool from the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository:
+
+1. Go to the [TeslaPowerwallLibrary releases](https://github.com/oznetmaster/TeslaPowerwallLibrary/releases) page and download the latest `TeslaPowerwallLibrary.Setup` release asset.
+2. Run the tool and sign in with your Tesla account credentials in the interactive login window.
+3. Copy the resulting refresh token shown by the tool.
+4. Paste it into the **Tesla Refresh Token** field when configuring this driver in Crestron Home.
+
+Full step-by-step instructions, including screenshots, are in the [Tesla cloud login guide](https://oznetmaster.github.io/TeslaPowerwallLibrary/articles/login.html).
+
+Tesla may periodically rotate the refresh token; this driver automatically persists an updated token if Tesla rotates it during normal use, so re-running the login tool should only be necessary if the stored token is lost or revoked.
+
+---
+
+## Building from Source
+
+### Dependencies
+
+- [TeslaPowerwallLibrary](https://www.nuget.org/packages/TeslaPowerwallLibrary) NuGet package
+- [Crestron.DeviceDrivers.DevKit](https://www.nuget.org/packages/Crestron.DeviceDrivers.DevKit) NuGet package
+- [Crestron.SimplSharp.SDK.Library](https://www.nuget.org/packages/Crestron.SimplSharp.SDK.Library) NuGet package
+- `.NET Framework 4.7.2`
+- [ILRepack](https://github.com/gluck/il-repack) via `ILRepackMerge.ps1`
+- `PatchMergedAssembly.ps1` to rewrite merged assemblies for Crestron Home runtime compatibility
+- `ManifestUtil.exe` from the Crestron Driver SDK to produce the final `.pkg`
+
+### Build
+
+```powershell
+dotnet build TeslaPowerwallCrestronDriver.slnx -c Release
+```
+
+The build pipeline:
+1. Compiles the driver targeting `net472`
+2. Bumps `DriverVersion` and `VersionDate` in `TeslaPowerwallCrestronDriver.json`
+3. ILRepacks runtime dependencies into the driver assembly
+4. Runs `PatchMergedAssembly.ps1` against the merged assembly
+5. Packages the driver into a `.pkg` using Crestron's ManifestUtil
+
+### GitHub Release Asset
+
+This repository includes a GitHub Actions workflow that builds the Release package and attaches the generated `.pkg` to a GitHub Release.
+
+The same release workflow also publishes the `TeslaPowerwallCrestronDriver` NuGet package, which wraps the final generated `.pkg` artifact.
+
+Typical release flow:
+1. Push the release commit and tag
+2. Publish the GitHub Release for that tag
+3. Let the workflow build and attach the `.pkg` asset automatically
+
+---
+
+## Repository Notes
+
+- XML documentation generation is enabled in the project build
+- The release workflow builds the package on `windows-latest`
+- The repository includes the driver package/build scripts needed for packaging and deployment
+
+---
+
+## License
+
+MIT + Commons Clause © 2026 Neil Colvin — see [LICENSE](LICENSE).
+
+Free to use and modify. You may not sell the Software as a standalone product or sublicense it.
+Commercial system integration work (for example, a Crestron installer commissioning a customer system) is explicitly permitted, even where a fee is charged for that service.
+
+Tesla and Powerwall are trademarks of Tesla, Inc.
+
+> **Note:** This project references [Crestron.DeviceDrivers.DevKit](https://www.nuget.org/packages/Crestron.DeviceDrivers.DevKit),
+> which is subject to Crestron's SDK license agreement. That license governs the SDK libraries only;
+> the source code in this repository is licensed independently under the terms above.

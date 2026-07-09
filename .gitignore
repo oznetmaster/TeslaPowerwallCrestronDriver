@@ -44,3 +44,7 @@ Desktop.ini
 
 # Visual Studio project backup files
 *.Backup.tmp
+
+## Local diagnostic/scratch files (should never be committed)
+_diag*
+_schema.xsd
