@@ -1,6 +1,6 @@
 # TeslaPowerwallCrestronDriver
 
-A **Crestron Home** extension driver that integrates a **Tesla Powerwall** energy site via the Tesla Owners (cloud) API, providing live power flow, battery status, energy history, and site control from the Crestron Home app.
+A **Crestron Home** Entity V2 driver that integrates a **Tesla Powerwall** energy site via the Tesla Owners (cloud) API, providing live power flow, battery status, energy history, and site control from the Crestron Home app.
 
 Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent, unofficial driver and is not affiliated with, endorsed by, or sponsored by Tesla, Inc. Crestron and Crestron Home are trademarks or registered trademarks of Crestron Electronics, Inc. This project is not affiliated with, endorsed by, or sponsored by Crestron Electronics, Inc.
 
@@ -10,7 +10,7 @@ Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent
 
 ## Driver Architecture
 
-This driver is a **Crestron Home energy-automation extension driver** implemented on the **Crestron Home SDK V2 Entity Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
+This driver is a **Crestron Home energy-automation Entity V2 driver** implemented on the **Crestron Home SDK V2 Entity Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
 
 The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using its Tesla Owners (cloud) API support. Only a Tesla account OAuth refresh token is required — the library automatically derives and renews the access token from it on every connection.
 
@@ -95,7 +95,7 @@ For Crestron Home programmers, every Settings control above is also exposed as a
 
 | Requirement | Details |
 |---|---|
-| Crestron Home processor | Running a firmware version compatible with extension drivers |
+| Crestron Home processor | Running a firmware version compatible with Entity V2 drivers |
 | Tesla account | Must have one or more Powerwalls linked to the account |
 | Tesla OAuth refresh token | Obtained using the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) login tool — see [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below |
 

@@ -17,7 +17,7 @@
 		<PackageId>CrestronHomeDriver.Tesla.Powerwall</PackageId>
 		<Authors>Neil Colvin</Authors>
 		<Company>Neil Colvin</Company>
-		<Description>Crestron Home Extension Driver V2 Tesla Powerwall.</Description>
+		<Description>Crestron Home Entity V2 Driver for Tesla Powerwall.</Description>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<RepositoryUrl>https://github.com/oznetmaster/TeslaPowerwallCrestronDriver</RepositoryUrl>
