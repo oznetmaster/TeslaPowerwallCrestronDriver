@@ -30,6 +30,13 @@
 		<TreatWarningsAsErrors Condition="'$(Configuration)' == 'Debug'">true</TreatWarningsAsErrors>
 	</PropertyGroup>
 
+	<!-- Lets the release workflow supply the GitHub Release notes as the NuGet package's release notes without
+		  needing to escape multi-line text on the dotnet pack command line: it writes the notes to a plain text
+		  file and passes that file's path in via PackageReleaseNotesFile, which is read here at pack time. -->
+	<PropertyGroup Condition="'$(PackageReleaseNotesFile)' != '' And Exists('$(PackageReleaseNotesFile)')">
+		<PackageReleaseNotes>$([System.IO.File]::ReadAllText('$(PackageReleaseNotesFile)'))</PackageReleaseNotes>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<PackageReference Include="TeslaPowerwallLibrary" Version="1.2.2" />
 		<PackageReference Include="Crestron.DeviceDrivers.DevKit" Version="27.0.24" />

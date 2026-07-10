@@ -96,8 +96,26 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore TeslaPowerwallCrestronDriver.slnx
 
+      - name: Write release notes
+        id: release_notes
+        shell: pwsh
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          # Reuses the published GitHub Release's description as the NuGet package's release notes, so the
+          # two stay in sync without duplicating the text. Only populated for an actual "release" event;
+          # a manual workflow_dispatch run has no release body, so the NuGet package simply omits notes.
+          $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.txt'
+          if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_BODY)) {
+            Set-Content -Path $notesPath -Value $env:RELEASE_BODY -Encoding UTF8 -NoNewline
+            "path=$notesPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+          else {
+            "path=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
       - name: Determine release version
-        id: package_version
+
         shell: pwsh
         run: |
           $refName = if ($env:GITHUB_EVENT_NAME -eq 'release' -and $env:GITHUB_EVENT_PATH) {
@@ -183,7 +201,7 @@ jobs:
 
           Set-Content -Path $manifestPath -Value $manifest -Encoding UTF8
 
-          dotnet pack TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.csproj -c Release --no-build --output $outputDir -p:PackageVersion="${{ steps.package_version.outputs.value }}" -p:PackageDriverPkgPath="${{ steps.package.outputs.pkg_path }}" -p:PackageDriverManifestPath="$manifestPath"
+          dotnet pack TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.csproj -c Release --no-build --output $outputDir -p:PackageVersion="${{ steps.package_version.outputs.value }}" -p:PackageDriverPkgPath="${{ steps.package.outputs.pkg_path }}" -p:PackageDriverManifestPath="$manifestPath" -p:PackageReleaseNotesFile="${{ steps.release_notes.outputs.path }}"
 
       - name: Locate NuGet package
         id: nuget_package
