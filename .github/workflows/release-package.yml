@@ -115,7 +115,7 @@ jobs:
           }
 
       - name: Determine release version
-
+        id: package_version
         shell: pwsh
         run: |
           $refName = if ($env:GITHUB_EVENT_NAME -eq 'release' -and $env:GITHUB_EVENT_PATH) {
