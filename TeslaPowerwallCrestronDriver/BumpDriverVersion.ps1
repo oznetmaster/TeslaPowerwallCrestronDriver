@@ -26,7 +26,10 @@ $build = [int]$match.Groups['build'].Value
 			$newVersion = '{0}.{1}.{2}.{3}' -f $major, $minor, $release.ToString('000'), ($build + 1).ToString('0000')
 		}
 		'Release' {
-		$newVersion = '{0}.{1}.{2}.0000' -f $major, $minor, ($release + 1).ToString('000')
+		# The committed DriverVersion's major.minor.release is the exact version being released (see the
+		# release workflow's "Determine release version" step, which reads this value before the build
+		# runs); only the build component is normalized here, not incremented.
+		$newVersion = '{0}.{1}.{2}.0000' -f $major, $minor, $release.ToString('000')
 	}
 	default {
 		exit 0

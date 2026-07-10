@@ -78,6 +78,7 @@ public sealed partial class TeslaPowerwallDriver
 		if (client != null)
 			{
 			client.CloudTokensRefreshed -= OnCloudTokensRefreshed;
+			client.FleetApiTokensRefreshed -= OnFleetApiTokensRefreshed;
 			client.Dispose ();
 			}
 		}
@@ -202,22 +203,33 @@ public sealed partial class TeslaPowerwallDriver
 				return _client;
 				}
 
-			// AccessToken is intentionally omitted: it is optional on PowerwallOptions, and the library obtains
-			// a fresh one from RefreshToken alone on every connect, so there is nothing for the driver to supply.
-			// SiteId is only passed here when it is purely numeric (a real Tesla energy site id); an alphanumeric
-			// site name is resolved to its id after connecting, in ResolveConfiguredSiteAsync.
-			var options = new TeslaPowerwallLibrary.PowerwallOptions
-				{
-				CloudMode = true,
-				NoCloudTokenPersistence = true,
-				Email = string.IsNullOrWhiteSpace (_email) ? TeslaPowerwallLibrary.Constants.DEFAULT_EMAIL : _email,
-				RefreshToken = _refreshToken,
-				SiteId = IsNumericSiteId (_siteId) ? _siteId : null,
-				Timeout = TimeSpan.FromSeconds (15),
-				};
+			// AccessToken/FleetApiAccessToken is intentionally omitted: it is optional on PowerwallOptions, and
+			// the library obtains a fresh one from RefreshToken alone on every connect, so there is nothing for
+			// the driver to supply. SiteId is only passed here when it is purely numeric (a real Tesla energy
+			// site id); an alphanumeric site name is resolved to its id after connecting, in ResolveConfiguredSiteAsync.
+			string numericSiteId = IsNumericSiteId (_siteId) ? _siteId : null;
+			TeslaPowerwallLibrary.PowerwallOptions options = IsFleetApi
+				? new TeslaPowerwallLibrary.PowerwallOptions
+					{
+					FleetApi = true,
+					NoFleetApiTokenPersistence = true,
+					FleetApiClientId = _clientId,
+					FleetApiRefreshToken = _refreshToken,
+					SiteId = numericSiteId,
+					Timeout = TimeSpan.FromSeconds (15),
+					}
+				: new TeslaPowerwallLibrary.PowerwallOptions
+					{
+					CloudMode = true,
+					NoCloudTokenPersistence = true,
+					RefreshToken = _refreshToken,
+					SiteId = numericSiteId,
+					Timeout = TimeSpan.FromSeconds (15),
+					};
 
 			var client = new TeslaPowerwallLibrary.Powerwall (options);
 			client.CloudTokensRefreshed += OnCloudTokensRefreshed;
+			client.FleetApiTokensRefreshed += OnFleetApiTokensRefreshed;
 			_client = client;
 			return client;
 			}
@@ -277,7 +289,11 @@ public sealed partial class TeslaPowerwallDriver
 			string mode = await client.GetModeAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 			bool? gridCharging = await client.GetGridChargingAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 			string gridExport = await client.GetGridExportAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
-			bool? stormWatch = await client.GetStormWatchAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
+			// Storm Watch is not supported by the Tesla Fleet API (the library throws PowerwallNotSupportedException
+			// if called), so it is only polled when connected via the Tesla Owner API cloud flow.
+			bool? stormWatch = IsFleetApi
+				? null
+				: await client.GetStormWatchAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 
 			ApplyPolledState (level, power, gridStatus, reserve, mode, gridCharging, gridExport, stormWatch);
 			await RefreshEnergyAndImpactAsync (client, cancellationToken).ConfigureAwait (false);
@@ -315,7 +331,7 @@ public sealed partial class TeslaPowerwallDriver
 			BackupReservePercent = (int) Math.Round (reserve.Value, MidpointRounding.AwayFromZero);
 			}
 
-		OperationModeDisplay = "Mode: " + FormatModeDisplay (mode);
+		OperationModeDisplay = BuildOperationModeDisplay (mode);
 		if (!string.IsNullOrEmpty (mode))
 			{
 			OperationMode = mode;
@@ -388,6 +404,33 @@ public sealed partial class TeslaPowerwallDriver
 		catch (Exception ex)
 			{
 			LogWarning ("Failed to persist refreshed Tesla refresh token: " + ex.Message);
+			}
+		}
+
+	private void OnFleetApiTokensRefreshed (object sender, FleetApiTokensRefreshedEventArgs e)
+		{
+		// Only RefreshToken is persisted: AccessToken is never configured or read back by the driver, since
+		// the library derives a fresh one from RefreshToken alone on every connect (see GetOrCreateClient).
+		if (string.IsNullOrWhiteSpace (e.RefreshToken))
+			{
+			return;
+			}
+
+		_refreshToken = e.RefreshToken;
+		_pendingRefreshToken = e.RefreshToken;
+
+		var updates = new Dictionary<string, DriverEntityValue?> (StringComparer.OrdinalIgnoreCase)
+			{
+			["RefreshToken"] = new DriverEntityValue (e.RefreshToken),
+			};
+
+		try
+			{
+			ConfigurationController.NotifyValuesChanged (updates);
+			}
+		catch (Exception ex)
+			{
+			LogWarning ("Failed to persist refreshed Tesla Fleet API refresh token: " + ex.Message);
 			}
 		}
 
@@ -1366,6 +1409,12 @@ public sealed partial class TeslaPowerwallDriver
 		null => "--",
 		_ => mode
 		};
+
+	// Connection type is appended to the operation mode line so it fits within the Main page's fixed
+	// three-line status display without needing a dedicated row. Local and TEDAPI are not yet implemented
+	// by the driver (see IsFleetApi), so only Owner and Fleet are distinguished for now.
+	private string BuildOperationModeDisplay (string mode) =>
+		"Mode: " + FormatModeDisplay (mode) + " | Connection: " + (IsFleetApi ? "Fleet" : "Owner");
 
 	private static string FormatGridExportDisplay (string mode) => mode switch
 		{

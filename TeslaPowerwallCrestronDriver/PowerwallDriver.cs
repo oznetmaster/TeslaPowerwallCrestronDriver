@@ -79,12 +79,12 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 	private bool _energyPeriodIsCurrent = true;
 	private bool _impactPeriodIsCurrent = true;
 
-	private string _email = string.Empty;
+	private string _clientId = string.Empty;
 	private string _refreshToken = string.Empty;
 	private string _siteId = string.Empty;
 	private int _refreshIntervalSeconds = DEFAULT_REFRESH_INTERVAL_SECONDS;
 
-	private string _pendingEmail = string.Empty;
+	private string _pendingClientId = string.Empty;
 	private string _pendingRefreshToken = string.Empty;
 	private string _pendingSiteId = string.Empty;
 	private int _pendingRefreshIntervalSeconds = DEFAULT_REFRESH_INTERVAL_SECONDS;
@@ -96,6 +96,11 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 	private bool? _stormWatchActive;
 	private bool? _batteryReserveLowActive;
 	private bool? _batteryFullyChargedActive;
+
+	// True when a Client ID has been configured, meaning the driver connects via the Tesla Fleet API rather
+	// than the Tesla Owner API cloud flow. The Fleet API does not support Storm Watch, so this also drives
+	// whether the Storm Watch UI/command is exposed (see StormWatchVisible and PowerwallDriver.Commands.cs).
+	private bool IsFleetApi => !string.IsNullOrWhiteSpace (_clientId);
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TeslaPowerwallDriver"/> class.
@@ -143,6 +148,7 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		OperationMode = "self_consumption";
 		GridExportMode = "battery_ok";
 		StormWatchEnabled = false;
+		StormWatchVisible = true;
 		EnergyPeriod = "day";
 		EnergyPeriodOffsetFormat = BuildPeriodOffsetText (HistoryPeriod.Day, _energyPeriodAnchorDate, isCurrentPeriod: true);
 		EnergyPeriodOffsetVisible = true;
@@ -189,11 +195,11 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		if (action == DataDrivenConfigurationController.ApplyConfigurationAction.ClearValues)
 			{
 			StopRefreshLoop ();
-			_email = string.Empty;
+			_clientId = string.Empty;
 			_refreshToken = string.Empty;
 			_siteId = string.Empty;
 			_refreshIntervalSeconds = DEFAULT_REFRESH_INTERVAL_SECONDS;
-			_pendingEmail = string.Empty;
+			_pendingClientId = string.Empty;
 			_pendingRefreshToken = string.Empty;
 			_pendingSiteId = string.Empty;
 			_pendingRefreshIntervalSeconds = DEFAULT_REFRESH_INTERVAL_SECONDS;
@@ -206,17 +212,29 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 			return null;
 			}
 
-		// Email is a label only in cloud mode: Tesla cloud authentication is entirely token-based, so it is
-		// never required or validated here, per driver design (matches the manifest's Required: false).
-		// AccessToken is intentionally not configured: PowerwallOptions.AccessToken is optional, and the library
-		// obtains (and, in NoCloudTokenPersistence mode, only ever surfaces via CloudTokensRefreshed) a fresh access
-		// token from RefreshToken alone on every connect, so RefreshToken is the only credential the driver needs.
-		string email = GetString (values, "Email") ?? _pendingEmail;
-		string refreshToken = GetString (values, "RefreshToken") ?? _pendingRefreshToken;
+		// ClientId is optional and selects the authentication mode: when provided, the driver connects via the
+		// Tesla Fleet API and RefreshToken must be a Fleet API refresh token; when blank, the driver uses the
+		// Tesla Owner API cloud flow and RefreshToken must be an Owner API refresh token.
+		// AccessToken is intentionally not configured: PowerwallOptions.AccessToken/FleetApiAccessToken is optional,
+		// and the library obtains (and, in NoCloudTokenPersistence/NoFleetApiTokenPersistence mode, only ever
+		// surfaces via CloudTokensRefreshed) a fresh access token from RefreshToken alone on every connect, so
+		// RefreshToken is the only credential the driver needs.
+		string suppliedClientId = GetString (values, "ClientId");
+		string suppliedRefreshToken = GetString (values, "RefreshToken");
 		string siteId = GetString (values, "SiteId") ?? _pendingSiteId;
 		int refreshInterval = GetInteger (values, "RefreshIntervalSeconds") ?? _pendingRefreshIntervalSeconds;
 
-		_pendingEmail = email ?? string.Empty;
+		string clientId = suppliedClientId ?? _pendingClientId;
+
+		// Owner API and Fleet API refresh tokens are not interchangeable, and Fleet API refresh tokens are
+		// themselves scoped to the specific application (Client ID) that requested them. Any change to the
+		// Client ID - whether it is newly added, removed, or replaced with a different one - therefore
+		// invalidates whatever refresh token was previously cached: it belonged to the prior mode/application
+		// and cannot simply be carried forward, so a fresh RefreshToken must be supplied in this same update.
+		bool clientIdChanged = !string.Equals (_clientId ?? string.Empty, clientId ?? string.Empty, StringComparison.Ordinal);
+		string refreshToken = clientIdChanged ? suppliedRefreshToken : (suppliedRefreshToken ?? _pendingRefreshToken);
+
+		_pendingClientId = clientId ?? string.Empty;
 		_pendingRefreshToken = refreshToken ?? string.Empty;
 		_pendingSiteId = siteId ?? string.Empty;
 		_pendingRefreshIntervalSeconds = refreshInterval;
@@ -224,7 +242,9 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		var errors = new Dictionary<string, string> (StringComparer.OrdinalIgnoreCase);
 		if (string.IsNullOrWhiteSpace (refreshToken))
 			{
-			errors["RefreshToken"] = "Tesla refresh token is required.";
+			errors["RefreshToken"] = clientIdChanged
+				? "The Client ID changed; the cached refresh token no longer applies. Enter a new refresh token for the new mode."
+				: "Tesla refresh token is required.";
 			}
 
 		if (refreshInterval < MINIMUM_REFRESH_INTERVAL_SECONDS || refreshInterval > MAXIMUM_REFRESH_INTERVAL_SECONDS)
@@ -237,12 +257,13 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 			return new ConfigurationItemErrors (errors, "Correct the configuration values and retry.");
 			}
 
-		_email = email ?? string.Empty;
+		_clientId = clientId ?? string.Empty;
 		_refreshToken = refreshToken;
 		_siteId = siteId ?? string.Empty;
 		_refreshIntervalSeconds = refreshInterval;
 		_siteName = string.Empty;
 		SiteNameDisplay = "--";
+		StormWatchVisible = !IsFleetApi;
 
 		StartRefreshLoop ();
 		return null;

@@ -1,6 +1,6 @@
 # TeslaPowerwallCrestronDriver
 
-A **Crestron Home** Entity V2 driver that integrates a **Tesla Powerwall** energy site via the Tesla Owners (cloud) API, providing live power flow, battery status, energy history, and site control from the Crestron Home app.
+A **Crestron Home** Entity V2 driver that integrates a **Tesla Powerwall** energy site via the Tesla Owner API or the official Tesla Fleet API, providing live power flow, battery status, energy history, and site control from the Crestron Home app.
 
 Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent, unofficial driver and is not affiliated with, endorsed by, or sponsored by Tesla, Inc. Crestron and Crestron Home are trademarks or registered trademarks of Crestron Electronics, Inc. This project is not affiliated with, endorsed by, or sponsored by Crestron Electronics, Inc.
 
@@ -12,13 +12,13 @@ Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent
 
 This driver is a **Crestron Home energy-automation Entity V2 driver** implemented on the **Crestron Home SDK Entity V2 Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
 
-The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using its Tesla Owners (cloud) API support. Only a Tesla account OAuth refresh token is required — the library automatically derives and renews the access token from it on every connection.
+The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using either its Tesla Owner API (cloud) support or its official Tesla Fleet API support. Only an OAuth refresh token is required for either mode — the library automatically derives and renews the access token from it on every connection.
 
 ---
 
 ## Supported Connection Modes
 
-This driver currently connects to Tesla using one mode, via `TeslaPowerwallLibrary`:
+This driver connects to Tesla using one of two modes, via `TeslaPowerwallLibrary`. Which mode is used is selected entirely by configuration: leave **Tesla Fleet API Client ID** blank to use the Tesla Owner API, or set it to use the Tesla Fleet API (see [Configuration](#configuration) below).
 
 ### Tesla Owner API (Cloud)
 
@@ -26,10 +26,15 @@ Uses Tesla's unofficial, undocumented Owner API. Requires a one-time login via t
 
 ⚠️ **Stability notice:** The Owner API is unofficial and undocumented. As of July 2026, Tesla has begun deprecating Owner API access for **vehicle** endpoints (confirmed via multiple independent reports and Tesla's own error responses pointing to the official Fleet API). Energy/Powerwall endpoints appear unaffected at this time, but there is no guarantee this will remain the case. If Owner API access breaks for your site, please open an issue on this repository.
 
+### Tesla Fleet API (Official)
+
+Uses Tesla's officially supported, documented Fleet API. Requires a Tesla Fleet API application (with its own Client ID) and a Fleet API refresh token for your Tesla account. Configuring a **Tesla Fleet API Client ID** switches the driver into this mode, and the **Tesla Refresh Token** field must then contain a Fleet API refresh token rather than an Owner API one.
+
+The Fleet API covers everything this driver uses — live status, energy/impact history, backup reserve, operating mode, and grid export control — with one exception: **Storm Watch is not available through the Fleet API**. When a Client ID is configured, the Storm Watch toggle is hidden from the Settings page and the `setStormWatchEnabled` command is a no-op.
+
 ### Not Yet Supported
 
 - **Local Mode (Powerwall 2 / Powerwall+ only)** — `TeslaPowerwallLibrary` can connect directly to a Gateway 2's local REST API over your home LAN, but this driver does not yet expose it as a configuration option. Not supported on Powerwall 3 in any case, since PW3 replaces this local API with TEDAPI.
-- **Fleet API (official)** — Tesla's officially supported, documented API. Not yet implemented in `TeslaPowerwallLibrary`. It covers live status and control (backup reserve, operating mode, Storm Watch) fully, but its historical `calendar_history` endpoint has no equivalent to the Owner API's `self_consumption`, `soe`, or `power` history, so switching entirely to Fleet API would mean losing that historical data.
 - **TEDAPI (Powerwall 3 local access)** — Scaffolded in `TeslaPowerwallLibrary` but not yet complete; requires physical/network access to the Powerwall 3's isolated local interface.
 
 See the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository for the underlying library's full roadmap and known issues.
@@ -80,7 +85,7 @@ Lets you adjust the site directly from Crestron Home:
 
 - **Backup Reserve** — the minimum battery charge percentage reserved for outages
 - **Charge From Grid** — allow the battery to charge from the grid, not just from solar
-- **Storm Watch** — Tesla's predictive pre-charge ahead of severe weather forecasts
+- **Storm Watch** — Tesla's predictive pre-charge ahead of severe weather forecasts (only shown when connected via the Tesla Owner API; not available on the Tesla Fleet API)
 - **Operation Mode** — Self Powered, Backup Only, or Autonomous
 - **Grid Export** — Battery OK, Solar Only, or Never
 - **Refresh Now** — forces an immediate refresh instead of waiting for the next scheduled poll
@@ -120,19 +125,21 @@ Crestron Home Driver NuGet Publishing Standard v1 is **not** an official Crestro
 
 | Field | Description |
 |---|---|
-| Tesla Account Email | Optional, label only. Not sent to Tesla; just identifies which account the refresh token below belongs to. |
-| Tesla Refresh Token | Required. OAuth refresh token for the Tesla account — see [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below. |
+| Tesla Fleet API Client ID | Optional. Leave blank to use the Tesla Owner API. Set to a Tesla Fleet API application Client ID to use the Tesla Fleet API instead — when set, the refresh token below must be a Fleet API refresh token, and Storm Watch is unavailable. |
+| Tesla Refresh Token | Required. OAuth refresh token for the Tesla account — an Owner API refresh token if Client ID above is blank, or a Fleet API refresh token if it is set. See [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below. |
 | Tesla Energy Site ID | Optional. Numeric Tesla energy site ID, or the site's name exactly as shown in the Tesla app/account. Leave blank to use the account's first/default energy site. |
-| Refresh Interval Seconds | How often the driver refreshes Powerwall status and power data from the Tesla cloud. 30-3600 seconds; default 60. |
+| Refresh Interval Seconds | How often the driver refreshes Powerwall status and power data from Tesla. 30-3600 seconds; default 60. |
+
+⚠️ **Changing the Client ID invalidates the cached refresh token.** Owner API and Fleet API refresh tokens are not interchangeable, and Fleet API refresh tokens are themselves scoped to the application (Client ID) that requested them. Adding, removing, or changing the Client ID therefore requires entering a new, matching refresh token in the same configuration update — the driver will reject the update with a validation error on the Tesla Refresh Token field if one isn't supplied.
 
 ### Obtaining a Tesla Refresh Token
 
-This driver authenticates to Tesla exclusively through the Tesla Owners cloud API, so it needs an OAuth refresh token for your Tesla account before it can connect. Tesla's login flow requires an interactive browser sign-in, which isn't something a Crestron Home driver can perform on its own, so token retrieval is handled by a companion tool from the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository:
+This driver needs an OAuth refresh token for your Tesla account before it can connect, regardless of mode. Tesla's login flow requires an interactive browser sign-in, which isn't something a Crestron Home driver can perform on its own, so token retrieval is handled by a companion tool from the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository:
 
 1. Go to the [TeslaPowerwallLibrary releases](https://github.com/oznetmaster/TeslaPowerwallLibrary/releases) page and download the latest `TeslaPowerwallLibrary.Setup` release asset.
-2. Run the tool and sign in with your Tesla account credentials in the interactive login window.
+2. Run the tool and sign in with your Tesla account credentials in the interactive login window. For Fleet API mode, use the tool's Fleet API login option and supply your Fleet API application's Client ID.
 3. Copy the resulting refresh token shown by the tool.
-4. Paste it into the **Tesla Refresh Token** field when configuring this driver in Crestron Home.
+4. Paste it into the **Tesla Refresh Token** field when configuring this driver in Crestron Home (and, for Fleet API mode, paste the Client ID into the **Tesla Fleet API Client ID** field).
 
 Full step-by-step instructions, including screenshots, are in the [Tesla cloud login guide](https://oznetmaster.github.io/TeslaPowerwallLibrary/articles/login.html).
 

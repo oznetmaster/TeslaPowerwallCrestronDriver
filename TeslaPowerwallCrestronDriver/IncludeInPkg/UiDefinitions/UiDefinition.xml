@@ -68,7 +68,7 @@
 			<controls>
 				<raiselowerwithtext id="BackupReserveControl" label="^BackupReserveLabel" value="{backupReservePercent}" valueformat="{backupReserveValueFormat}" />
 				<toggle id="GridChargingToggle" label="^GridChargingLabel" value="{gridChargingEnabled}" />
-				<toggle id="StormWatchToggle" label="^StormWatchLabel" value="{stormWatchEnabled}" />
+				<toggle id="StormWatchToggle" label="^StormWatchLabel" value="{stormWatchEnabled}" visible="{stormWatchVisible}" />
 				<selectorbutton id="OperationModeSelector" label="^OperationModeHeaderLabel" value="{operationMode}" />
 				<selectorbutton id="GridExportSelector" label="^GridExportHeaderLabel" value="{gridExportMode}" />
 				<button id="RefreshNowButton" label="^RefreshNowButtonLabel" action="command:refreshNow" />

@@ -73,7 +73,7 @@ public sealed partial class TeslaPowerwallDriver
 			() =>
 				{
 				OperationMode = value;
-				OperationModeDisplay = "Mode: " + FormatModeDisplay (value);
+				OperationModeDisplay = BuildOperationModeDisplay (value);
 				},
 			"set mode to " + value));
 		}
@@ -103,6 +103,12 @@ public sealed partial class TeslaPowerwallDriver
 	[EntityCommandMetadata (Programmable = true)]
 	public void SetStormWatchEnabled ([EntityParameter] bool value)
 		{
+		if (IsFleetApi)
+			{
+			LogWarning ("Storm Watch is not supported when connected via the Tesla Fleet API.");
+			return;
+			}
+
 		_ = Task.Run (() => ExecuteControlAsync (
 			client => client.SetStormWatchAsync (value),
 			() => StormWatchEnabled = value,

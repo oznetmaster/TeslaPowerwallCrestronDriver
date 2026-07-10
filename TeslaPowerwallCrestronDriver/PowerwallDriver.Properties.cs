@@ -136,6 +136,17 @@ public sealed partial class TeslaPowerwallDriver
 		private set => SetAndNotify ("stormWatchEnabled", value, ref field);
 		}
 
+	// Storm Watch is fully supported when connected via the Tesla Owner API, but the Tesla Fleet API does
+	// not expose it (the underlying library throws if it is called in Fleet API mode), so the Settings page
+	// hides the Storm Watch toggle entirely whenever a Client ID (Fleet API) is configured. See IsFleetApi.
+	[EntityProperty (Id = "stormWatchVisible")]
+	[EntityPropertyMetadata (ExtensionUiProperty = true)]
+	public bool StormWatchVisible
+		{
+		get;
+		private set => SetAndNotify ("stormWatchVisible", value, ref field);
+		}
+
 	[EntityProperty (Id = "gridExportModeDisplay")]
 	[EntityPropertyMetadata (ExtensionUiProperty = true)]
 	public string GridExportModeDisplay

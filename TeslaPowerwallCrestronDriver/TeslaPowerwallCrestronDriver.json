@@ -20,15 +20,15 @@
       "Website": "",
       "PhoneNumber": ""
     },
-    "DriverVersion": "1.0.001.0000",
-    "VersionDate": "2026-07-09 15:03:40.244"
+    "DriverVersion": "1.1.000.0001",
+    "VersionDate": "2026-07-10 08:42:03.506"
   },
   "ConfigurationSteps": {
     "Items": [
       {
-        "Id": "Email",
-        "Title": "Tesla Account Email",
-        "Description": "Label only; not sent to Tesla. Identifies which account the cached credentials below belong to.",
+        "Id": "ClientId",
+        "Title": "Tesla Fleet API Client ID",
+        "Description": "Optional. Leave blank to use the Tesla Owner API. Enter a Tesla Fleet API application Client ID to use the Tesla Fleet API instead; when set, the refresh token below must be a Fleet API refresh token, and Storm Watch is unavailable. Changing this value (adding, removing, or replacing it) invalidates the cached refresh token; a new refresh token for the new mode must be entered at the same time.",
         "Required": false,
         "Persistent": true,
         "ValueType": "String"
@@ -36,7 +36,7 @@
       {
         "Id": "RefreshToken",
         "Title": "Tesla Refresh Token",
-        "Description": "OAuth refresh token for the Tesla account, obtained using an external setup tool. The library automatically obtains and renews the access token from this refresh token on every connection; the driver updates this value here if Tesla rotates it.",
+        "Description": "OAuth refresh token for the Tesla account, obtained using an external setup tool. This is an Owner API refresh token unless a Client ID is also provided above, in which case it must be a Fleet API refresh token. The library automatically obtains and renews the access token from this refresh token on every connection; the driver updates this value here if Tesla rotates it. Note: changing the Client ID above invalidates this cached value, so a matching new refresh token must be entered whenever the Client ID is added, removed, or changed.",
         "Required": true,
         "Persistent": true,
         "Masked": true,
@@ -66,7 +66,7 @@
       {
         "StepId": "CloudAccountConfiguration",
         "Items": [
-          "Email",
+          "ClientId",
           "RefreshToken",
           "SiteId",
           "RefreshIntervalSeconds"

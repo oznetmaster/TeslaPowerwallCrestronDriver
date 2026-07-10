@@ -133,7 +133,9 @@ jobs:
               throw "DriverVersion '$driverVersion' does not contain four numeric components."
             }
 
-            $releaseVersion = '{0}.{1}.{2}' -f $match.Groups['major'].Value, $match.Groups['minor'].Value, ([int]$match.Groups['release'].Value + 1)
+            # The checked-in manifest's major.minor.release directly is the intended release version - this
+            # commit is expected to set DriverVersion to the exact version being released before tagging.
+            $releaseVersion = '{0}.{1}.{2}' -f $match.Groups['major'].Value, $match.Groups['minor'].Value, [int]$match.Groups['release'].Value
 
             if ($tagVersion -match '^\d+\.\d+\.\d+$' -and $tagVersion -ne $releaseVersion) {
               throw "GitHub tag version '$tagVersion' does not match expected Release version '$releaseVersion' derived from pre-build DriverVersion '$driverVersion'."
