@@ -117,7 +117,6 @@ public sealed partial class TeslaPowerwallDriver
 
 	/// <summary>Sets the selected aggregation period for the Energy page (day, week, month, year, or lifetime).</summary>
 	[EntityCommand (Id = "setEnergyPeriod")]
-	[EntityCommandMetadata (Programmable = true)]
 	public void SetEnergyPeriod ([EntityParameter] string value)
 		{
 		if (string.IsNullOrWhiteSpace (value))
@@ -139,7 +138,6 @@ public sealed partial class TeslaPowerwallDriver
 
 	/// <summary>Moves the Energy page's viewed period back one whole step (e.g. from Today to Yesterday).</summary>
 	[EntityCommand (Id = "energyPeriodOffsetBack")]
-	[EntityCommandMetadata (Programmable = true)]
 	public void EnergyPeriodOffsetBack ()
 		{
 		_energyPeriodAnchorDate = StepPeriod (ParseHistoryPeriod (EnergyPeriod), _energyPeriodAnchorDate, -1);
@@ -156,7 +154,6 @@ public sealed partial class TeslaPowerwallDriver
 	/// this simply lands on the new current period rather than the old one.
 	/// </summary>
 	[EntityCommand (Id = "energyPeriodOffsetForward")]
-	[EntityCommandMetadata (Programmable = true)]
 	public void EnergyPeriodOffsetForward ()
 		{
 		HistoryPeriod period = ParseHistoryPeriod (EnergyPeriod);
@@ -178,7 +175,6 @@ public sealed partial class TeslaPowerwallDriver
 
 	/// <summary>Sets the selected energy type for the Energy page (solar, powerwall, grid, or house).</summary>
 	[EntityCommand (Id = "setEnergyType")]
-	[EntityCommandMetadata (Programmable = true)]
 	public void SetEnergyType ([EntityParameter] string value)
 		{
 		if (string.IsNullOrWhiteSpace (value))
@@ -192,7 +188,6 @@ public sealed partial class TeslaPowerwallDriver
 
 	/// <summary>Sets the selected aggregation period for the Impact page (day, week, month, year, or lifetime).</summary>
 	[EntityCommand (Id = "setImpactPeriod")]
-	[EntityCommandMetadata (Programmable = true)]
 	public void SetImpactPeriod ([EntityParameter] string value)
 		{
 		if (string.IsNullOrWhiteSpace (value))
@@ -214,7 +209,6 @@ public sealed partial class TeslaPowerwallDriver
 
 	/// <summary>Moves the Impact page's viewed period back one whole step (e.g. from Today to Yesterday).</summary>
 	[EntityCommand (Id = "impactPeriodOffsetBack")]
-	[EntityCommandMetadata (Programmable = true)]
 	public void ImpactPeriodOffsetBack ()
 		{
 		_impactPeriodAnchorDate = StepPeriod (ParseHistoryPeriod (ImpactPeriod), _impactPeriodAnchorDate, -1);
@@ -231,7 +225,6 @@ public sealed partial class TeslaPowerwallDriver
 	/// this simply lands on the new current period rather than the old one.
 	/// </summary>
 	[EntityCommand (Id = "impactPeriodOffsetForward")]
-	[EntityCommandMetadata (Programmable = true)]
 	public void ImpactPeriodOffsetForward ()
 		{
 		HistoryPeriod period = ParseHistoryPeriod (ImpactPeriod);
