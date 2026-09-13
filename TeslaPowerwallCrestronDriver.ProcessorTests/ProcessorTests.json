@@ -1,0 +1,20 @@
+{
+  "Name": "TeslaPowerwallCrestronDriver Tests",
+  "Port": 0,
+  "Suites": [
+    {
+      "Id": "unit",
+      "Name": "TeslaPowerwallCrestronDriver Tests  -  Unit Tests",
+      "FilterXml": "<filter><and><namespace re='1'>^TeslaPowerwallCrestronDriver[.]Tests($|[.])</namespace><not><cat>Processor</cat></not></and></filter>",
+      "ManualOnly": false,
+      "ExpectedCount": 53
+    },
+    {
+      "Id": "lifecycle",
+      "Name": "TeslaPowerwallCrestronDriver Tests  -  Processor Lifecycle",
+      "FilterXml": "<filter><cat>Processor</cat></filter>",
+      "ManualOnly": true,
+      "ExpectedCount": 20
+    }
+  ]
+}

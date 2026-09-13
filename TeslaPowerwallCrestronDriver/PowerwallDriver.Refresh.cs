@@ -43,7 +43,8 @@ public sealed partial class TeslaPowerwallDriver
 		lock (_syncLock)
 			{
 			_refreshCancellationTokenSource = new CancellationTokenSource ();
-			_ = Task.Run (() => RefreshLoopAsync (_refreshCancellationTokenSource.Token));
+			CancellationToken token = _refreshCancellationTokenSource.Token;
+			_ = Task.Run (() => RefreshLoopAsync (token));
 			}
 		}
 
@@ -147,6 +148,14 @@ public sealed partial class TeslaPowerwallDriver
 			}
 		}
 
+	private void EnsureCurrentClient (TeslaPowerwallLibrary.Powerwall client, CancellationToken cancellationToken)
+		{
+		cancellationToken.ThrowIfCancellationRequested ();
+		lock (_stateLock)
+			if (!ReferenceEquals (client, _client))
+				throw new OperationCanceledException ("The driver connection was replaced or closed.");
+		}
+
 	private async Task ConnectAndPollAsync (CancellationToken cancellationToken)
 		{
 		TeslaPowerwallLibrary.Powerwall client = GetOrCreateClient ();
@@ -157,21 +166,25 @@ public sealed partial class TeslaPowerwallDriver
 			try
 				{
 				connected = await client.ConnectAsync (cancellationToken).ConfigureAwait (false);
+				EnsureCurrentClient (client, cancellationToken);
 				}
 			catch (PowerwallCloudNoTeslaAuthFileException ex)
 				{
+					EnsureCurrentClient (client, cancellationToken);
 				SetUnavailableState ("Invalid or missing Tesla tokens");
 				LogError ("Tesla cloud authentication failed: " + ex.Message);
 				return;
 				}
 			catch (PowerwallInvalidConfigurationException ex)
 				{
+					EnsureCurrentClient (client, cancellationToken);
 				SetUnavailableState ("Configuration error");
 				LogError ("Tesla cloud configuration error: " + ex.Message);
 				return;
 				}
 			catch (PowerwallException ex)
 				{
+					EnsureCurrentClient (client, cancellationToken);
 				SetUnavailableState ("Unable to connect to Tesla cloud");
 				LogError ("Tesla cloud connection error: " + ex.Message);
 				return;
@@ -185,10 +198,13 @@ public sealed partial class TeslaPowerwallDriver
 
 			OnlineIndicatorIsOnline = true;
 			await ResolveConfiguredSiteAsync (client, cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			await RefreshSiteNameAsync (client, cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			}
 
 		await PollAsync (client, cancellationToken).ConfigureAwait (false);
+		EnsureCurrentClient (client, cancellationToken);
 		}
 
 	private static bool IsNumericSiteId (string siteId) =>
@@ -247,6 +263,7 @@ public sealed partial class TeslaPowerwallDriver
 		try
 			{
 			IReadOnlyList<CloudSite> sites = await client.GetSitesAsync (cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			string trimmed = _siteId.Trim ();
 			CloudSite match = sites.FirstOrDefault (site => string.Equals (site.SiteId, trimmed, StringComparison.Ordinal))
 				?? sites.FirstOrDefault (site => string.Equals (site.SiteName?.Trim (), trimmed, StringComparison.OrdinalIgnoreCase));
@@ -257,9 +274,11 @@ public sealed partial class TeslaPowerwallDriver
 				}
 
 			await client.ChangeSiteAsync (match.SiteId, cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			}
 		catch (PowerwallException ex)
 			{
+				EnsureCurrentClient (client, cancellationToken);
 			LogWarning ("Unable to resolve configured Tesla site name: " + ex.Message);
 			}
 		}
@@ -269,12 +288,20 @@ public sealed partial class TeslaPowerwallDriver
 		try
 			{
 			string siteName = await client.SiteNameAsync (cancellationToken).ConfigureAwait (false);
-			_siteName = siteName ?? string.Empty;
-			SiteNameDisplay = string.IsNullOrWhiteSpace (siteName) ? "--" : siteName;
+			lock (_stateLock)
+				{
+				EnsureCurrentClient (client, cancellationToken);
+				_siteName = siteName ?? string.Empty;
+				SiteNameDisplay = string.IsNullOrWhiteSpace (siteName) ? "--" : siteName;
+				}
 			}
 		catch (PowerwallException ex)
 			{
-			LogWarning ("Unable to retrieve Tesla site name: " + ex.Message);
+			lock (_stateLock)
+				{
+					EnsureCurrentClient (client, cancellationToken);
+				LogWarning ("Unable to retrieve Tesla site name: " + ex.Message);
+				}
 			}
 		}
 
@@ -283,29 +310,49 @@ public sealed partial class TeslaPowerwallDriver
 		try
 			{
 			double? level = await client.LevelAsync (scale: true, cancellationToken: cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			PowerSnapshot power = await client.PowerAsync (cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			GridStatus? gridStatus = await client.GridStatusAsync (cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			double? reserve = await client.GetReserveAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			string mode = await client.GetModeAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			bool? gridCharging = await client.GetGridChargingAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			string gridExport = await client.GetGridExportAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
+			EnsureCurrentClient (client, cancellationToken);
 			// Storm Watch is not supported by the Tesla Fleet API (the library throws PowerwallNotSupportedException
 			// if called), so it is only polled when connected via the Tesla Owner API cloud flow.
 			bool? stormWatch = IsFleetApi
 				? null
 				: await client.GetStormWatchAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
+				EnsureCurrentClient (client, cancellationToken);
 
-			ApplyPolledState (level, power, gridStatus, reserve, mode, gridCharging, gridExport, stormWatch);
+			lock (_stateLock)
+				{
+				EnsureCurrentClient (client, cancellationToken);
+				ApplyPolledState (level, power, gridStatus, reserve, mode, gridCharging, gridExport, stormWatch);
+				}
 			await RefreshEnergyAndImpactAsync (client, cancellationToken).ConfigureAwait (false);
-			OnlineIndicatorIsOnline = true;
-			ReadyIndicatorIsReady = true;
-			StatusSummary = BuildUpdatedSummary ();
+			lock (_stateLock)
+				{
+				EnsureCurrentClient (client, cancellationToken);
+				OnlineIndicatorIsOnline = true;
+				ReadyIndicatorIsReady = true;
+				StatusSummary = BuildUpdatedSummary ();
+				}
 			}
 		catch (PowerwallException ex)
 			{
-			ReadyIndicatorIsReady = false;
-			StatusSummary = "Update failed: " + ex.Message;
-			LogWarning ("Tesla cloud poll failed: " + ex.Message);
+			lock (_stateLock)
+				{
+					EnsureCurrentClient (client, cancellationToken);
+				ReadyIndicatorIsReady = false;
+				StatusSummary = "Update failed: " + ex.Message;
+				LogWarning ("Tesla cloud poll failed: " + ex.Message);
+				}
 			}
 		}
 
@@ -382,55 +429,65 @@ public sealed partial class TeslaPowerwallDriver
 
 	private void OnCloudTokensRefreshed (object sender, CloudTokensRefreshedEventArgs e)
 		{
-		// Only RefreshToken is persisted: AccessToken is never configured or read back by the driver, since
-		// the library derives a fresh one from RefreshToken alone on every connect (see GetOrCreateClient).
-		if (string.IsNullOrWhiteSpace (e.RefreshToken))
+		lock (_stateLock)
 			{
-			return;
-			}
+			if (_client == null || !ReferenceEquals (sender, _client))
+				return;
+			// Only RefreshToken is persisted: AccessToken is never configured or read back by the driver, since
+			// the library derives a fresh one from RefreshToken alone on every connect (see GetOrCreateClient).
+			if (string.IsNullOrWhiteSpace (e.RefreshToken))
+				{
+				return;
+				}
 
-		_refreshToken = e.RefreshToken;
-		_pendingRefreshToken = e.RefreshToken;
+			_refreshToken = e.RefreshToken;
+			_pendingRefreshToken = e.RefreshToken;
 
-		var updates = new Dictionary<string, DriverEntityValue?> (StringComparer.OrdinalIgnoreCase)
-			{
-			["RefreshToken"] = new DriverEntityValue (e.RefreshToken),
-			};
+			var updates = new Dictionary<string, DriverEntityValue?> (StringComparer.OrdinalIgnoreCase)
+				{
+				["RefreshToken"] = new DriverEntityValue (e.RefreshToken),
+				};
 
-		try
-			{
-			ConfigurationController.NotifyValuesChanged (updates);
-			}
-		catch (Exception ex)
-			{
-			LogWarning ("Failed to persist refreshed Tesla refresh token: " + ex.Message);
+			try
+				{
+				ConfigurationController.NotifyValuesChanged (updates);
+				}
+			catch (Exception ex)
+				{
+				LogWarning ("Failed to persist refreshed Tesla refresh token: " + ex.Message);
+				}
 			}
 		}
 
 	private void OnFleetApiTokensRefreshed (object sender, FleetApiTokensRefreshedEventArgs e)
 		{
-		// Only RefreshToken is persisted: AccessToken is never configured or read back by the driver, since
-		// the library derives a fresh one from RefreshToken alone on every connect (see GetOrCreateClient).
-		if (string.IsNullOrWhiteSpace (e.RefreshToken))
+		lock (_stateLock)
 			{
-			return;
-			}
+			if (_client == null || !ReferenceEquals (sender, _client))
+				return;
+			// Only RefreshToken is persisted: AccessToken is never configured or read back by the driver, since
+			// the library derives a fresh one from RefreshToken alone on every connect (see GetOrCreateClient).
+			if (string.IsNullOrWhiteSpace (e.RefreshToken))
+				{
+				return;
+				}
 
-		_refreshToken = e.RefreshToken;
-		_pendingRefreshToken = e.RefreshToken;
+			_refreshToken = e.RefreshToken;
+			_pendingRefreshToken = e.RefreshToken;
 
-		var updates = new Dictionary<string, DriverEntityValue?> (StringComparer.OrdinalIgnoreCase)
-			{
-			["RefreshToken"] = new DriverEntityValue (e.RefreshToken),
-			};
+			var updates = new Dictionary<string, DriverEntityValue?> (StringComparer.OrdinalIgnoreCase)
+				{
+				["RefreshToken"] = new DriverEntityValue (e.RefreshToken),
+				};
 
-		try
-			{
-			ConfigurationController.NotifyValuesChanged (updates);
-			}
-		catch (Exception ex)
-			{
-			LogWarning ("Failed to persist refreshed Tesla Fleet API refresh token: " + ex.Message);
+			try
+				{
+				ConfigurationController.NotifyValuesChanged (updates);
+				}
+			catch (Exception ex)
+				{
+				LogWarning ("Failed to persist refreshed Tesla Fleet API refresh token: " + ex.Message);
+				}
 			}
 		}
 
@@ -589,37 +646,45 @@ public sealed partial class TeslaPowerwallDriver
 			{
 			IReadOnlyList<EnergyHistoryPoint> points = await client.GetEnergyCalendarHistoryAsync (
 				period, startDate: startDate, endDate: endDate, cancellationToken: cancellationToken).ConfigureAwait (false);
-
-			EnergyPeriodLabel = BuildPeriodLabel (period, _energyPeriodAnchorDate);
-			EnergyPeriodOffsetFormat = BuildPeriodOffsetText (period, _energyPeriodAnchorDate, _energyPeriodIsCurrent);
-			EnergyPeriodForwardEnabled = !_energyPeriodIsCurrent;
-
-			if (points.Count == 0)
+			lock (_stateLock)
 				{
-				EnergyValueDisplay = "--";
-				EnergyDetailDisplay = "--";
-				EnergySummaryDisplay = "--";
-				EnergyBreakdownVisible = false;
-				ApplyEnergyRows (Array.Empty<(string, string, string)> ());
-				return;
+					EnsureCurrentClient (client, cancellationToken);
+
+				EnergyPeriodLabel = BuildPeriodLabel (period, _energyPeriodAnchorDate);
+				EnergyPeriodOffsetFormat = BuildPeriodOffsetText (period, _energyPeriodAnchorDate, _energyPeriodIsCurrent);
+				EnergyPeriodForwardEnabled = !_energyPeriodIsCurrent;
+
+				if (points.Count == 0)
+					{
+					EnergyValueDisplay = "--";
+					EnergyDetailDisplay = "--";
+					EnergySummaryDisplay = "--";
+					EnergyBreakdownVisible = false;
+					ApplyEnergyRows (Array.Empty<(string, string, string)> ());
+					return;
+					}
+
+				double solarKwh = points.Sum (p => p.SolarKwh);
+				double homeKwh = points.Sum (p => p.HomeKwh);
+				double fromGridKwh = points.Sum (p => p.FromGridKwh);
+				double toGridKwh = points.Sum (p => p.ToGridKwh);
+				double batteryChargeKwh = points.Sum (p => p.BatteryChargeKwh);
+				double batteryDischargeKwh = points.Sum (p => p.BatteryDischargeKwh);
+
+				ApplyEnergyDisplays (EnergyType, solarKwh, homeKwh, fromGridKwh, toGridKwh, batteryChargeKwh, batteryDischargeKwh);
+
+				IReadOnlyList<(string Label, string Value, string Icon)> rows = BuildEnergyRows (period, _energyPeriodAnchorDate, EnergyType, points);
+				EnergyBreakdownVisible = rows.Count > 0;
+				ApplyEnergyRows (rows);
 				}
-
-			double solarKwh = points.Sum (p => p.SolarKwh);
-			double homeKwh = points.Sum (p => p.HomeKwh);
-			double fromGridKwh = points.Sum (p => p.FromGridKwh);
-			double toGridKwh = points.Sum (p => p.ToGridKwh);
-			double batteryChargeKwh = points.Sum (p => p.BatteryChargeKwh);
-			double batteryDischargeKwh = points.Sum (p => p.BatteryDischargeKwh);
-
-			ApplyEnergyDisplays (EnergyType, solarKwh, homeKwh, fromGridKwh, toGridKwh, batteryChargeKwh, batteryDischargeKwh);
-
-			IReadOnlyList<(string Label, string Value, string Icon)> rows = BuildEnergyRows (period, _energyPeriodAnchorDate, EnergyType, points);
-			EnergyBreakdownVisible = rows.Count > 0;
-			ApplyEnergyRows (rows);
 			}
 		catch (PowerwallException ex)
 			{
-			LogWarning ("Unable to retrieve Tesla energy history: " + ex.Message);
+			lock (_stateLock)
+				{
+					EnsureCurrentClient (client, cancellationToken);
+				LogWarning ("Unable to retrieve Tesla energy history: " + ex.Message);
+				}
 			}
 		finally
 			{
@@ -632,6 +697,7 @@ public sealed partial class TeslaPowerwallDriver
 
 	// Derives the Energy page's three display lines from the selected energy type, using only the sums
 	// exposed by EnergyHistoryPoint's computed kWh properties (no Tesla fields are invented or re-attributed).
+
 	private void ApplyEnergyDisplays (
 		string energyType,
 		double solarKwh,
@@ -792,7 +858,10 @@ public sealed partial class TeslaPowerwallDriver
 		for (int month = 1; month <= 12; month++)
 			{
 			DateTimeOffset slotStart = LocalMidnight (anchor.Year, month, 1);
-			slots.Add ((slotStart, slotStart.AddMonths (1), slotStart.ToString ("MMMM", CultureInfo.CurrentCulture)));
+			// Resolve the next calendar boundary with its own daylight-saving offset.
+			DateTime nextMonth = new DateTime (anchor.Year, month, 1).AddMonths (1);
+			DateTimeOffset slotEnd = LocalMidnight (nextMonth.Year, nextMonth.Month, 1);
+			slots.Add ((slotStart, slotEnd, slotStart.ToString ("MMMM", CultureInfo.CurrentCulture)));
 			}
 
 		return slots;
@@ -1041,33 +1110,41 @@ public sealed partial class TeslaPowerwallDriver
 			{
 			IReadOnlyList<SelfConsumptionHistoryPoint> points = await client.GetSelfConsumptionCalendarHistoryAsync (
 				period, startDate: startDate, endDate: endDate, cancellationToken: cancellationToken).ConfigureAwait (false);
-
-			ImpactPeriodLabel = BuildPeriodLabel (period, _impactPeriodAnchorDate);
-			ImpactPeriodOffsetFormat = BuildPeriodOffsetText (period, _impactPeriodAnchorDate, _impactPeriodIsCurrent);
-			ImpactPeriodForwardEnabled = !_impactPeriodIsCurrent;
-
-			if (points.Count == 0)
+			lock (_stateLock)
 				{
-				SelfPoweredPercent = 0;
-				ImpactHomeUsageDisplay = "--";
-				ImpactGridUsageDisplay = "--";
-				ImpactSummaryDisplay = "--";
-				return;
+					EnsureCurrentClient (client, cancellationToken);
+
+				ImpactPeriodLabel = BuildPeriodLabel (period, _impactPeriodAnchorDate);
+				ImpactPeriodOffsetFormat = BuildPeriodOffsetText (period, _impactPeriodAnchorDate, _impactPeriodIsCurrent);
+				ImpactPeriodForwardEnabled = !_impactPeriodIsCurrent;
+
+				if (points.Count == 0)
+					{
+					SelfPoweredPercent = 0;
+					ImpactHomeUsageDisplay = "--";
+					ImpactGridUsageDisplay = "--";
+					ImpactSummaryDisplay = "--";
+					return;
+					}
+
+				double solarPercent = points.Average (p => p.SolarPercentage);
+				double batteryPercent = points.Average (p => p.BatteryPercentage);
+				double selfPowered = Math.Min (100, Math.Max (0, solarPercent + batteryPercent));
+				double gridPercent = Math.Min (100, Math.Max (0, 100 - selfPowered));
+
+				SelfPoweredPercent = (int) Math.Round (selfPowered, MidpointRounding.AwayFromZero);
+				ImpactHomeUsageDisplay = string.Format (CultureInfo.InvariantCulture, "Solar: {0:0}%  Pwall: {1:0}%", solarPercent, batteryPercent);
+				ImpactGridUsageDisplay = string.Format (CultureInfo.InvariantCulture, "Grid: {0:0}%", gridPercent);
+				ImpactSummaryDisplay = string.Format (CultureInfo.InvariantCulture, "{0}% Self", SelfPoweredPercent);
 				}
-
-			double solarPercent = points.Average (p => p.SolarPercentage);
-			double batteryPercent = points.Average (p => p.BatteryPercentage);
-			double selfPowered = Math.Min (100, Math.Max (0, solarPercent + batteryPercent));
-			double gridPercent = Math.Min (100, Math.Max (0, 100 - selfPowered));
-
-			SelfPoweredPercent = (int) Math.Round (selfPowered, MidpointRounding.AwayFromZero);
-			ImpactHomeUsageDisplay = string.Format (CultureInfo.InvariantCulture, "Solar: {0:0}%  Pwall: {1:0}%", solarPercent, batteryPercent);
-			ImpactGridUsageDisplay = string.Format (CultureInfo.InvariantCulture, "Grid: {0:0}%", gridPercent);
-			ImpactSummaryDisplay = string.Format (CultureInfo.InvariantCulture, "{0}% Self", SelfPoweredPercent);
 			}
 		catch (PowerwallException ex)
 			{
-			LogWarning ("Unable to retrieve Tesla self-consumption history: " + ex.Message);
+			lock (_stateLock)
+				{
+					EnsureCurrentClient (client, cancellationToken);
+				LogWarning ("Unable to retrieve Tesla self-consumption history: " + ex.Message);
+				}
 			}
 		finally
 			{
@@ -1083,6 +1160,7 @@ public sealed partial class TeslaPowerwallDriver
 	// refresh that will supply the new period's actual figures. The data controls are disabled in the
 	// meantime, via EnergyContentEnabled, so stale figures for the previous period are never shown next to
 	// a label/button that has already moved on; RefreshEnergyAsync re-enables them once it completes.
+
 	private void UpdateEnergyPeriodDisplayImmediate ()
 		{
 		HistoryPeriod period = ParseHistoryPeriod (EnergyPeriod);

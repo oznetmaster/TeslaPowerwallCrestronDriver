@@ -1,5 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
+	<PropertyGroup Condition="'$(BuildForTests)' == 'true'">
+		<OutputPath>bin\Tests\$(Configuration)\</OutputPath>
+		<IntermediateOutputPath>obj\Tests\$(Configuration)\</IntermediateOutputPath>
+	</PropertyGroup>
+
+  <Import Project="DriverVersion.props" />
 	<PropertyGroup>
 		<TargetFramework>net472</TargetFramework>
 		<OutputType>Library</OutputType>
@@ -73,11 +79,11 @@
 		<PackageDriverIgnoreExitCode Condition="'$(PackageDriverIgnoreExitCode)' == ''">true</PackageDriverIgnoreExitCode>
 	</PropertyGroup>
 
-	<Target Name="BumpDriverVersion" BeforeTargets="BeforeBuild">
-		<Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\BumpDriverVersion.ps1&quot; -ManifestPath &quot;$(MSBuildProjectDirectory)\TeslaPowerwallCrestronDriver.json&quot; -Configuration &quot;$(Configuration)&quot;" />
+	<Target Name="BumpDriverVersion" BeforeTargets="BeforeBuild" Condition="'$(BuildForTests)' != 'true' And '$(DesignTimeBuild)' != 'true'">
+		<Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\BumpDriverVersion.ps1&quot; -ManifestPath &quot;$(MSBuildProjectDirectory)\TeslaPowerwallCrestronDriver.json&quot; -Configuration &quot;$(Configuration)&quot; -ReleaseVersion &quot;$(DriverReleaseVersion)&quot;" />
 	</Target>
 
-	<Target Name="MergeDependencies" AfterTargets="Build">
+	<Target Name="MergeDependencies" AfterTargets="Build" Condition="'$(BuildForTests)' != 'true'">
 		<ItemGroup>
 			<MergeInputs Include="$(TargetPath)" />
 			<MergeInputs Include="$(TargetDir)TeslaPowerwallLibrary.dll" />
@@ -102,7 +108,7 @@
 		<Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\PatchMergedAssembly.ps1&quot; -AssemblyPath &quot;$(TargetPath)&quot; -OutputPath &quot;$(TargetDir)patched\$(AssemblyName).dll&quot;" ContinueOnError="false" />
 	</Target>
 
-	<Target Name="PackageDriver" AfterTargets="MergeDependencies">
+	<Target Name="PackageDriver" AfterTargets="MergeDependencies" Condition="'$(BuildForTests)' != 'true'">
 		<RemoveDir Directories="$(TargetDir)patched\IncludeInPkg" />
 		<ItemGroup>
 			<IncludeInPkgFiles Include="$(MSBuildProjectDirectory)\IncludeInPkg\**\*" Exclude="$(MSBuildProjectDirectory)\IncludeInPkg\**\*.xsd" />
@@ -111,7 +117,7 @@
 		<Exec Command="&quot;$(ManifestUtilExe)&quot; --file &quot;$(TargetDir)patched\$(AssemblyName).dll&quot; --lib &quot;$(TargetDir.TrimEnd('\'))&quot; --output &quot;$(TargetDir.TrimEnd('\'))&quot;" ContinueOnError="$(PackageDriverContinueOnError)" IgnoreExitCode="$(PackageDriverIgnoreExitCode)" />
 	</Target>
 
-	<Target Name="DeployDriver" AfterTargets="PackageDriver" Condition="'$(DeployAfterBuild)' == 'true' And '$(Configuration)' == 'Debug' And '$(CrestronHomeIP)' != ''">
+	<Target Name="DeployDriver" AfterTargets="PackageDriver" Condition="'$(BuildForTests)' != 'true' And '$(DeployAfterBuild)' == 'true' And '$(Configuration)' == 'Debug' And '$(CrestronHomeIP)' != ''">
 		<PropertyGroup>
 			<PkgFile>$(TargetDir)$(AssemblyName).pkg</PkgFile>
 			<DeployScriptPath>$(MSBuildProjectDirectory)\Deploy.ps1</DeployScriptPath>

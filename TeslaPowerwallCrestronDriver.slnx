@@ -1,3 +1,6 @@
 <Solution>
   <Project Path="TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.csproj" />
+  <Project Path="TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj" />
+  <Project Path="TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests.csproj" />
+  <Project Path="TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj" />
 </Solution>

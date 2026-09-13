@@ -1,0 +1,13 @@
+<!-- Copyright (c) 2026 Neil Colvin. MIT with Commons Clause; see LICENSE. -->
+<Project>
+	<PropertyGroup>
+		<ManifestUtilExe></ManifestUtilExe>
+		<LocalCrestronSdkLibDir></LocalCrestronSdkLibDir>
+		<LocalNet472ReferenceAssemblies></LocalNet472ReferenceAssemblies>
+		<LocalNetFxRuntimeDir></LocalNetFxRuntimeDir>
+		<DeployAfterBuild Condition="'$(DeployAfterBuild)' == ''">false</DeployAfterBuild>
+		<CrestronHomeIP Condition="'$(CrestronHomeIP)' == ''"></CrestronHomeIP>
+		<CrestronHomeFtpUser Condition="'$(CrestronHomeFtpUser)' == ''"></CrestronHomeFtpUser>
+		<CrestronHomeSftpPassword Condition="'$(CrestronHomeSftpPassword)' == ''"></CrestronHomeSftpPassword>
+	</PropertyGroup>
+</Project>
