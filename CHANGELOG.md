@@ -2,7 +2,7 @@
 
 ## 1.1.5 — 2026-09-14
 
-[Draft driver release notes](RELEASE-NOTES.md). Test-only changes do not require a driver release.
+[Driver release notes](RELEASE-NOTES.md). Test-only changes do not require a driver release.
 
 - Cover Owner/Fleet token callbacks from current and replaced clients, and delayed successful/failed refreshes after configuration is cleared or the driver is disposed. Reject callbacks and refresh results from superseded clients before updating credentials, cached state or availability.
 
