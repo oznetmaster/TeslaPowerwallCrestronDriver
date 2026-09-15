@@ -1,6 +1,11 @@
-# TeslaPowerwallCrestronDriver processor tests — driver release 1.1.6
+# TeslaPowerwallCrestronDriver Tests
 
-## Unreleased
+## 1.1.7
+
+- Rebuild with CrestronHomeNUnit 1.2.1. Test execution now participates in the shared processor reservation used by the runner, Test Explorer, CLI and hardware CI.
+- The net472 package contains 76 discovered cases, with 73 in automatic suites. Live suites remain optional and require private inputs where documented.
+- Use the standalone Utility tile, Windows runner, or the solution's Test Explorer workflow project. Private workflow plans can remove the temporary instance after testing.
+- This is an independent processor-test package release on GitHub; it does not publish or update a driver/library NuGet package.
 
 - Include 76 cases: 53 unit, 20 lifecycle and 3 optional live site tests. The package remains net472-only and uses Configure's Utility category.
 - Live inputs support Owner and Fleet sessions prepared by the library's dedicated test credential helper. Installed drivers keep their independent credentials. The helper persists test refresh-token rotation on Windows; processor inputs contain an access token only. The three Owner live tests passed on Windows and the processor, and the full gated driver-update workflow passed. Three dedicated Fleet read-only tests have also passed on Windows and the processor. The automatic-region behavior in library 1.2.5 passed the full gated workflow: 73 local tests, 73 processor tests and three read-only Fleet live tests, followed by the actual driver update and three installed-driver health checks. No processor reboot was required. Local driver access remains pending.
