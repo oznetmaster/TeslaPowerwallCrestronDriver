@@ -13,7 +13,7 @@
 - Validate 73 local tests, 73 processor tests and three read-only Fleet tests before updating the actual driver; all three post-update driver health checks passed without a reboot.
 - Include the standalone processor test package as a GitHub release asset under Utility in Configure. It is not published to NuGet.
 
-## 1.1.5 â€” 2026-09-14
+## 1.1.5 — 2026-09-14
 
 [Driver release notes](RELEASE-NOTES.md). Test-only changes do not require a driver release.
 
