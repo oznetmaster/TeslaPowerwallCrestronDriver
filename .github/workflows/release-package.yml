@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: oznetmaster/CrestronHomeNUnit
-          ref: 198d5d351b819e5a1069bf6aac02f8bbebf7d798
+          ref: ad67729080f9d753c16b9f0d4acdd13c52bab5e3
           path: .processor-sdk
 
       - name: Set up .NET SDK
@@ -178,7 +178,7 @@ jobs:
             commit = '${{ github.sha }}'
             release = '${{ steps.package_version.outputs.tag }}'
             testHostRepository = 'oznetmaster/CrestronHomeNUnit'
-            testHostCommit = '198d5d351b819e5a1069bf6aac02f8bbebf7d798'
+            testHostCommit = 'ad67729080f9d753c16b9f0d4acdd13c52bab5e3'
           } | ConvertTo-Json | Set-Content "$tests/TeslaPowerwallCrestronDriver.ProcessorTests.sources.json"
           $assets = @("$tests/bin/Release/net472/TeslaPowerwallCrestronDriver.ProcessorTests.pkg", "$tests/TeslaPowerwallCrestronDriver.ProcessorTests-Documentation.zip", "$tests/TeslaPowerwallCrestronDriver.ProcessorTests.sources.json")
           $assets | ForEach-Object {

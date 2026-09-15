@@ -273,3 +273,7 @@ The fixture shares one connection per run, verifies site selection and published
 ### Fleet account region — 1.1.6
 
 Driver 1.1.6 uses TeslaPowerwallLibrary 1.2.5 to discover the authenticated account's Fleet region automatically. No new driver configuration field is required: supply the Fleet Client ID and refresh token as before. Earlier versions implicitly used North America / Asia-Pacific. The account region can differ from the energy site's physical location. The full gated update workflow passed with automatic region discovery, including read-only Fleet tests and installed-driver health checks.
+
+## Visual Studio processor workflow
+
+The solution includes [TeslaPowerwallCrestronDriver.WorkflowTests](TeslaPowerwallCrestronDriver.WorkflowTests/README.md), using the published Crestron Home Test Adapter. It exposes the complete gated workflow in Test Explorer while the ordinary NUnit fixtures remain available for local testing. Configure its private settings before execution; hosted CI verifies discovery without accessing hardware.
