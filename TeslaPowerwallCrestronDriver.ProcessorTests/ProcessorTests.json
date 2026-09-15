@@ -6,22 +6,19 @@
       "Id": "unit",
       "Name": "TeslaPowerwallCrestronDriver Tests  -  Unit Tests",
       "FilterXml": "<filter><and><namespace re='1'>^TeslaPowerwallCrestronDriver[.]Tests($|[.])</namespace><not><cat>Processor</cat></not></and></filter>",
-      "ManualOnly": false,
-      "ExpectedCount": 53
+      "ManualOnly": false
     },
     {
       "Id": "lifecycle",
       "Name": "TeslaPowerwallCrestronDriver Tests  -  Processor Lifecycle",
       "FilterXml": "<filter><and><cat>Processor</cat><not><cat>Live</cat></not></and></filter>",
-      "ManualOnly": false,
-      "ExpectedCount": 20
+      "ManualOnly": false
     },
     {
       "Id": "live",
       "Name": "TeslaPowerwallCrestronDriver Tests - Live Site",
       "FilterXml": "<filter><cat>Live</cat></filter>",
-      "ManualOnly": true,
-      "ExpectedCount": 3
+      "ManualOnly": true
     }
   ]
 }

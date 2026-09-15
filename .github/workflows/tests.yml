@@ -31,13 +31,11 @@ jobs:
       - uses: NuGet/setup-nuget@v2
       - name: Install processor packaging tools
         run: ../CrestronHomeNUnit/tools/InstallCiTools.ps1
+      - name: Verify discovery coverage guards
+        run: ./tools/Test-DiscoveredCoverageGuards.ps1
       - name: Run NUnit driver tests
         run: |
-          dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -c Release --filter "TestCategory!=Live" --logger "trx;LogFileName=tests.trx" --results-directory TestResults
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          [xml]$result = Get-Content TestResults/tests.trx -Raw
-          $counts = $result.TestRun.ResultSummary.Counters
-          if ([int]$counts.passed -ne 53 -or [int]$counts.total -ne 73) { throw "Unexpected test counts: $($counts.OuterXml)" }
+          ./tools/Test-DiscoveredCoverage.ps1 -Stage Desktop -Project TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -Framework net472 -AllowProcessorSkips -ResultsDirectory TestResults
       - name: Restore private desktop SDK dependency
         env:
           COMPACT_1: ${{ secrets.CI_COMPACT_JSON_1 }}
@@ -57,34 +55,18 @@ jobs:
           "CompactJsonPath=$path" >> $env:GITHUB_ENV
       - name: Run desktop SDK lifecycle harness
         run: |
-          dotnet test TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj -c Release --filter "TestCategory!=Live" --logger "trx;LogFileName=lifecycle.trx" --results-directory TestResults -p:DeployAfterBuild=false
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          [xml]$result = Get-Content TestResults/lifecycle.trx -Raw
-          $counts = $result.TestRun.ResultSummary.Counters
-          if ([int]$counts.passed -ne 73 -or [int]$counts.total -ne 73) { throw "Unexpected lifecycle harness counts: $($counts.OuterXml)" }
+          ./tools/Test-DiscoveredCoverage.ps1 -Stage Desktop -Project TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj -Framework net10.0 -ResultsDirectory TestResults
       - name: Build processor package
         run: |
           dotnet build TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests.csproj -c Release -p:BuildProcessorTestPackages=true -p:ReleaseVersion=1.0.0 -p:DeployAfterBuild=false "-p:ManifestUtilExe=$env:MANIFEST_UTIL_EXE"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run the packaged offline suites twice
+      - name: Run the packaged unit suite twice
         run: |
           $output = Join-Path $PWD 'TeslaPowerwallCrestronDriver.ProcessorTests/bin/Release/net472'
           $extracted = Join-Path $env:RUNNER_TEMP 'driver-package-tests'
           [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $output 'TeslaPowerwallCrestronDriver.ProcessorTests.pkg'), $extracted)
-          & ../CrestronHomeNUnit/ProcessorTestPackage.Validation/bin/Release/net472/ProcessorTestPackage.Validation.exe (Join-Path $extracted 'TeslaPowerwallCrestronDriver.ProcessorTests.dll') (Join-Path $PWD 'TestResults/processor') 73 --run-twice
+          ./tools/Test-DiscoveredCoverage.ps1 -Stage Package -SdkRoot ../CrestronHomeNUnit -PackageAssembly (Join-Path $extracted 'TeslaPowerwallCrestronDriver.ProcessorTests.dll') -SourceInventory TestResults/TeslaPowerwallCrestronDriver.Lifecycle.Tests/inventory.json -ResultsDirectory TestResults
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $runs = @(Get-ChildItem TestResults/processor -Directory -Recurse | Where-Object Name -Match '^run-[12]$')
-          if ($runs.Count -ne 2) { throw 'Expected two packaged test runs.' }
-          foreach ($run in $runs) {
-            $passed = 0; $skipped = 0; $failed = 0
-            foreach ($file in Get-ChildItem $run.FullName -Filter TestResult.xml -Recurse) {
-              [xml]$xml = Get-Content $file.FullName -Raw
-              $passed += [int]$xml.DocumentElement.passed
-              $skipped += [int]$xml.DocumentElement.skipped
-              $failed += [int]$xml.DocumentElement.failed
-            }
-            if ($passed -ne 53 -or $skipped -ne 20 -or $failed -ne 0) { throw 'Expected 53 portable passes and 20 processor-only skips in each Windows packaged run.' }
-          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
