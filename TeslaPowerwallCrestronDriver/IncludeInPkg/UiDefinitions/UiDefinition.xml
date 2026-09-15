@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <uidefinition xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://prd-use-rad-assets.azurewebsites.net/ExtensionsSchemaDefinition.xsd">
 	<version ver="3.0" />
-	<tile icon="{tileIcon}" status="{tileDisplay}" navigation="show:MainPage" showinhomepage="#true" showinroompage="#true"/>
+	<tile icon="{tileIcon}" status="{tileDisplay}" navigation="show:MainPage" showinhomepage="#true" showinroompage="#false"/>
 	<layouts>
 		<layout id="MainPage" title="^MainPageTitle|{siteNameDisplay}" isdefaultlayout="#true">
 			<controls>

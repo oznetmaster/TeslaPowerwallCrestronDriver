@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.7 - 2026-09-15
+
+- Correct the driver tile to appear on the Home screen only, rather than both Home and room screens. Room assignment, configuration and public commands are unchanged.
+
 ## CI validation - 2026-09-15 (no package release)
 
 - Revalidate the current default-branch source after successful release workflows, including version commits created by GitHub Actions.
