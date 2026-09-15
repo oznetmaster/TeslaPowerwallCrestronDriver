@@ -23,6 +23,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Check out processor test SDK
+        uses: actions/checkout@v4
+        with:
+          repository: oznetmaster/CrestronHomeNUnit
+          ref: 198d5d351b819e5a1069bf6aac02f8bbebf7d798
+          path: .processor-sdk
+
       - name: Set up .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -150,6 +157,35 @@ jobs:
           "pkg_path=$($pkg.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
 
+      - name: Build processor test release asset
+        shell: pwsh
+        run: |
+          dotnet build TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests.csproj -c Release -p:BuildProcessorTestPackages=true "-p:ProcessorTestSdkRoot=$env:GITHUB_WORKSPACE/.processor-sdk" -p:ReleaseVersion=${{ steps.package_version.outputs.value }} -p:DeployAfterBuild=false "-p:ManifestUtilExe=${{ steps.manifestutil.outputs.exe_path }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare processor test documentation and source identity
+        shell: pwsh
+        run: |
+          $docs = Join-Path $env:RUNNER_TEMP 'processor-release-docs'
+          New-Item -ItemType Directory -Path $docs -Force | Out-Null
+          Copy-Item README.md,CHANGELOG.md,LICENSE -Destination $docs
+          $tests = 'TeslaPowerwallCrestronDriver.ProcessorTests'
+          Copy-Item "$tests/RELEASE-NOTES.md","$tests/THIRD-PARTY-NOTICES.md" -Destination $docs
+          Copy-Item "$tests/licenses" -Destination $docs -Recurse
+          Compress-Archive -Path "$docs/*" -DestinationPath "$tests/TeslaPowerwallCrestronDriver.ProcessorTests-Documentation.zip"
+          @{
+            repository = '${{ github.repository }}'
+            commit = '${{ github.sha }}'
+            release = '${{ steps.package_version.outputs.tag }}'
+            testHostRepository = 'oznetmaster/CrestronHomeNUnit'
+            testHostCommit = '198d5d351b819e5a1069bf6aac02f8bbebf7d798'
+          } | ConvertTo-Json | Set-Content "$tests/TeslaPowerwallCrestronDriver.ProcessorTests.sources.json"
+          $assets = @("$tests/bin/Release/net472/TeslaPowerwallCrestronDriver.ProcessorTests.pkg", "$tests/TeslaPowerwallCrestronDriver.ProcessorTests-Documentation.zip", "$tests/TeslaPowerwallCrestronDriver.ProcessorTests.sources.json")
+          $assets | ForEach-Object {
+            $hash = Get-FileHash -LiteralPath $_ -Algorithm SHA256
+            "$($hash.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_))"
+          } | Set-Content "$tests/PROCESSOR-TESTS-SHA256SUMS.txt"
+
       - name: Pack NuGet package
         shell: pwsh
         run: |
@@ -212,5 +248,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name || github.ref_name }}
-          files: ${{ steps.package.outputs.pkg_path }}
+          files: |
+            ${{ steps.package.outputs.pkg_path }}
+            TeslaPowerwallCrestronDriver.ProcessorTests/bin/Release/net472/TeslaPowerwallCrestronDriver.ProcessorTests.pkg
+            TeslaPowerwallCrestronDriver.ProcessorTests/*-Documentation.zip
+            TeslaPowerwallCrestronDriver.ProcessorTests/*.sources.json
+            TeslaPowerwallCrestronDriver.ProcessorTests/PROCESSOR-TESTS-SHA256SUMS.txt
           fail_on_unmatched_files: true

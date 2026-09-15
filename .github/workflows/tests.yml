@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: oznetmaster/CrestronHomeNUnit
-          ref: 76c23f5f8e1fe4a19e0a1d023bc04e187e66e056
+          ref: 198d5d351b819e5a1069bf6aac02f8bbebf7d798
           path: CrestronHomeNUnit
       - uses: actions/setup-dotnet@v4
         with:
@@ -33,7 +33,7 @@ jobs:
         run: ../CrestronHomeNUnit/tools/InstallCiTools.ps1
       - name: Run NUnit driver tests
         run: |
-          dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -c Release --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+          dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -c Release --filter "TestCategory!=Live" --logger "trx;LogFileName=tests.trx" --results-directory TestResults
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           [xml]$result = Get-Content TestResults/tests.trx -Raw
           $counts = $result.TestRun.ResultSummary.Counters
@@ -57,7 +57,7 @@ jobs:
           "CompactJsonPath=$path" >> $env:GITHUB_ENV
       - name: Run desktop SDK lifecycle harness
         run: |
-          dotnet test TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj -c Release --logger "trx;LogFileName=lifecycle.trx" --results-directory TestResults -p:DeployAfterBuild=false
+          dotnet test TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj -c Release --filter "TestCategory!=Live" --logger "trx;LogFileName=lifecycle.trx" --results-directory TestResults -p:DeployAfterBuild=false
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           [xml]$result = Get-Content TestResults/lifecycle.trx -Raw
           $counts = $result.TestRun.ResultSummary.Counters
@@ -66,13 +66,25 @@ jobs:
         run: |
           dotnet build TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests.csproj -c Release -p:BuildProcessorTestPackages=true -p:ReleaseVersion=1.0.0 -p:DeployAfterBuild=false "-p:ManifestUtilExe=$env:MANIFEST_UTIL_EXE"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Run the packaged unit suite twice
+      - name: Run the packaged offline suites twice
         run: |
           $output = Join-Path $PWD 'TeslaPowerwallCrestronDriver.ProcessorTests/bin/Release/net472'
           $extracted = Join-Path $env:RUNNER_TEMP 'driver-package-tests'
           [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $output 'TeslaPowerwallCrestronDriver.ProcessorTests.pkg'), $extracted)
-          & ../CrestronHomeNUnit/ProcessorTestPackage.Validation/bin/Release/net472/ProcessorTestPackage.Validation.exe (Join-Path $extracted 'TeslaPowerwallCrestronDriver.ProcessorTests.dll') (Join-Path $PWD 'TestResults/processor') 53 --run-twice
+          & ../CrestronHomeNUnit/ProcessorTestPackage.Validation/bin/Release/net472/ProcessorTestPackage.Validation.exe (Join-Path $extracted 'TeslaPowerwallCrestronDriver.ProcessorTests.dll') (Join-Path $PWD 'TestResults/processor') 73 --run-twice
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $runs = @(Get-ChildItem TestResults/processor -Directory -Recurse | Where-Object Name -Match '^run-[12]$')
+          if ($runs.Count -ne 2) { throw 'Expected two packaged test runs.' }
+          foreach ($run in $runs) {
+            $passed = 0; $skipped = 0; $failed = 0
+            foreach ($file in Get-ChildItem $run.FullName -Filter TestResult.xml -Recurse) {
+              [xml]$xml = Get-Content $file.FullName -Raw
+              $passed += [int]$xml.DocumentElement.passed
+              $skipped += [int]$xml.DocumentElement.skipped
+              $failed += [int]$xml.DocumentElement.failed
+            }
+            if ($passed -ne 53 -or $skipped -ne 20 -or $failed -ne 0) { throw 'Expected 53 portable passes and 20 processor-only skips in each Windows packaged run.' }
+          }
       - uses: actions/upload-artifact@v4
         if: always()
         with:

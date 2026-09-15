@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "mode": "fleet",
+  "accessToken": "REPLACE_WITH_CURRENT_ACCESS_TOKEN",
+  "clientId": "REPLACE_WITH_FLEET_CLIENT_ID",
+  "siteId": "1234567890",
+  "region": "auto"
+}

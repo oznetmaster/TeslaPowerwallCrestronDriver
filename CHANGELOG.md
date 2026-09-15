@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.6] - 2026-09-15
+
+- Update TeslaPowerwallLibrary to 1.2.5, correcting Fleet token requests and automatically discovering the account's regional API endpoint. Existing Fleet configuration still requires only Client ID and refresh token.
+- Add three optional read-only live site tests with independent Owner/Fleet test credentials. Keep refresh-token ownership on Windows; processor inputs contain only a short-lived access token. Local gateway live testing remains future work.
+- Keep lifecycle tests in the ordinary processor workflow and coordinate Debug deployment through the shared DevTools processor lock.
+- Validate 73 local tests, 73 processor tests and three read-only Fleet tests before updating the actual driver; all three post-update driver health checks passed without a reboot.
+- Include the standalone processor test package as a GitHub release asset under Utility in Configure. It is not published to NuGet.
+
 ## 1.1.5 — 2026-09-14
 
 [Driver release notes](RELEASE-NOTES.md). Test-only changes do not require a driver release.

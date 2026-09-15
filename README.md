@@ -138,8 +138,8 @@ Crestron Home Driver NuGet Publishing Standard v1 is **not** an official Crestro
 
 This driver needs an OAuth refresh token for your Tesla account before it can connect, regardless of mode. Tesla's login flow requires an interactive browser sign-in, which isn't something a Crestron Home driver can perform on its own, so token retrieval is handled by a companion tool from the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository:
 
-1. Go to the [TeslaPowerwallLibrary releases](https://github.com/oznetmaster/TeslaPowerwallLibrary/releases) page and download the latest `TeslaPowerwallLibrary.Setup` release asset.
-2. Run the tool and sign in with your Tesla account credentials in the interactive login window. For Fleet API mode, use the tool's Fleet API login option and supply your Fleet API application's Client ID.
+1. Go to the [TeslaPowerwallLibrary releases](https://github.com/oznetmaster/TeslaPowerwallLibrary/releases) page and download `TeslaPowerwallSetup-net10.0-windows.zip`.
+2. Run the tool and sign in with your Tesla account credentials in the interactive login window. For Fleet API mode, supply your application's Client ID, Client Secret and registered redirect URI, select its region, then complete authorization in the embedded Tesla sign-in window; callback capture and token exchange are automatic. Initial partner registration also requires the registered domain and hosted public key. The Setup app supplied with library 1.2.5 offers **Sign in to Tesla** to skip registration for an existing application, and can remember application settings encrypted for your Windows account.
 3. Copy the resulting refresh token shown by the tool.
 4. Paste it into the **Tesla Refresh Token** field when configuring this driver in Crestron Home (and, for Fleet API mode, paste the Client ID into the **Tesla Fleet API Client ID** field).
 
@@ -226,7 +226,7 @@ Cover Owner/Fleet token callbacks from current and replaced clients, and delayed
 
 Changing authentication mode or Fleet application requires a fresh token; rejected edits preserve active configuration; refresh interval boundaries are validated; clearing configuration removes active and pending credentials and resets availability.
 
-The current package contains **53 offline tests** and **20 SDK entity/lifecycle tests**. The processor package remains **net472 only**, appears under **Utility** in Configure, and can run independently through its own tile or the Windows NUnit runner. These fixtures use synthetic data and do not operate installed devices or authenticate with real accounts.
+The current package contains **53 offline tests**, **20 SDK entity/lifecycle tests**, and **3 optional live site tests**. The processor package remains **net472 only**, appears under **Utility** in Configure, and can run independently through its own tile or the Windows NUnit runner. The offline and lifecycle fixtures use synthetic data. The optional Live Site suite exercises real driver polling and state publication against the selected Tesla energy site, without sending control commands.
 
 `TeslaPowerwallCrestronDriver.Lifecycle.Tests` runs the entity checks against the real desktop SDK on .NET 10. It compiles the relevant driver sources and shares fixture sources with the net472 processor tests. Building this project does not deploy a driver. A locally supplied `Newtonsoft.Json.Compact.dll` is needed by the SDK's manifest reader; it is supplied by the processor at runtime and must not be added to source control or bundled with the processor test package.
 
@@ -259,3 +259,17 @@ The SDK's desktop manifest reader needs its `Newtonsoft.Json.Compact.dll` runtim
 For automated local tests, processor tests and gated driver deployment, see the [Crestron Home NUnit CI development guide](https://github.com/oznetmaster/CrestronHomeNUnit/blob/HEAD/docs/ContinuousIntegration.md). It covers private configuration, live-test gates, install/update waits, results and optional test-package removal.
 
 Local build/deployment overrides can be created by copying [TeslaPowerwallCrestronDriver.Local.targets.example](TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.Local.targets.example) to `TeslaPowerwallCrestronDriver.Local.targets` beside the project. Fill in your own paths privately and exclude the resulting local file with `.git/info/exclude`; it is not part of the published source.
+
+### Optional live site tests
+
+Use a separately issued test credential; each installed driver keeps its existing credentials and independent rotation. Do not copy one driver's refresh token into the tests. Owner API (`cloud`) and Fleet API (`fleet`) use separate test profiles. Local gateway tests will follow the local driver implementation; they are not available yet.
+
+The library's [test credential helper](https://github.com/oznetmaster/TeslaPowerwallLibrary/blob/HEAD/TeslaPowerwallLibrary.TestCredentials/README.md) accepts the initial refresh token and, for Fleet, the client ID. It maintains subsequent tokens in an encrypted Windows store and holds exclusive ownership while tests run. The helper is included with library 1.2.5; these live fixtures are included with driver 1.1.6. Dedicated Owner authentication passed all three live tests on Windows and the processor. The complete gated workflow also passed 73 local tests, 73 processor tests and three installed-driver health checks after updating the actual driver. Dedicated Fleet read-only tests have also passed on Windows and the processor.
+
+Start a helper `session`, select **Live Site** in the Windows runner and supply its freshly generated `RunInputs/LiveTestSettings.json` using **Test inputs**. Keep the helper open until all tests stop. The runner enables the selected live suite for that session. For desktop automation, wrap the desktop SDK harness with the helper's `run` command, filter `TestCategory=Live`, and enable NUnit's `EnableLiveTests` parameter. The fixture reads `TestDataDirectory`, then `TESLA_LIVE_TEST_DATA_DIRECTORY`, then the private `%LOCALAPPDATA%/TeslaPowerwallCrestronDriver` folder. Ordinary CI excludes Live. The [input example](TeslaPowerwallCrestronDriver.Tests/LiveTestSettings.example.json) documents the generated format; users do not need to obtain access tokens manually.
+
+The fixture shares one connection per run, verifies site selection and published battery/operating state, and refreshes site data. Internally, only an access token is sent to the processor, so package removal cannot discard the rotating test credential. If it expires, stop and prepare a new session. This live fixture does not validate the driver's credential-storage path or operate battery controls; separate lifecycle tests cover token callbacks and installed-driver workflow checks cover deployed health. Private settings, paths and credentials stay outside source control, packages and CI artifacts.
+
+### Fleet account region — 1.1.6
+
+Driver 1.1.6 uses TeslaPowerwallLibrary 1.2.5 to discover the authenticated account's Fleet region automatically. No new driver configuration field is required: supply the Fleet Client ID and refresh token as before. Earlier versions implicitly used North America / Asia-Pacific. The account region can differ from the energy site's physical location. The full gated update workflow passed with automatic region discovery, including read-only Fleet tests and installed-driver health checks.

@@ -228,6 +228,7 @@ public sealed partial class TeslaPowerwallDriver
 				? new TeslaPowerwallLibrary.PowerwallOptions
 					{
 					FleetApi = true,
+					FleetApiRegion = "auto",
 					NoFleetApiTokenPersistence = true,
 					FleetApiClientId = _clientId,
 					FleetApiRefreshToken = _refreshToken,

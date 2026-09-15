@@ -12,9 +12,16 @@
     {
       "Id": "lifecycle",
       "Name": "TeslaPowerwallCrestronDriver Tests  -  Processor Lifecycle",
-      "FilterXml": "<filter><cat>Processor</cat></filter>",
-      "ManualOnly": true,
+      "FilterXml": "<filter><and><cat>Processor</cat><not><cat>Live</cat></not></and></filter>",
+      "ManualOnly": false,
       "ExpectedCount": 20
+    },
+    {
+      "Id": "live",
+      "Name": "TeslaPowerwallCrestronDriver Tests - Live Site",
+      "FilterXml": "<filter><cat>Live</cat></filter>",
+      "ManualOnly": true,
+      "ExpectedCount": 3
     }
   ]
 }
