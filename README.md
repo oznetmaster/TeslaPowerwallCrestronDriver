@@ -1,5 +1,8 @@
 # TeslaPowerwallCrestronDriver
 
+For shipped changes, see the [changelog](CHANGELOG.md). Test, CI and build history is recorded separately in [development and validation history](DEVELOPMENT-HISTORY.md).
+
+
 The driver tile appears on the **Home screen only**. It is not displayed on room screens; its room assignment remains available for configuration.
 
 See the [changelog](CHANGELOG.md) for release history and the [release notes](RELEASE-NOTES.md) for the current driver update. Driver releases are made for runtime fixes or dependency changes; adding tests alone does not require a driver release.
