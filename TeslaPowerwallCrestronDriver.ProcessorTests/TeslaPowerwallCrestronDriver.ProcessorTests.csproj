@@ -13,7 +13,7 @@
   <ItemGroup Condition="'$(BuildProcessorTestPackages)' == 'true'">
     <ProjectReference Include="..\TeslaPowerwallCrestronDriver.Tests\TeslaPowerwallCrestronDriver.Tests.csproj" />
     <ProjectReference Include="..\TeslaPowerwallCrestronDriver\TeslaPowerwallCrestronDriver.csproj" AdditionalProperties="BuildForTests=true;DeployAfterBuild=false;SkipDriverVersionBump=true" />
-    <ProcessorTestData Include="..\TeslaPowerwallCrestronDriver\IncludeInPkg\**\*" Exclude="..\TeslaPowerwallCrestronDriver\IncludeInPkg\**\*.xsd" TargetPath="DriverTestData\%(RecursiveDir)%(Filename)%(Extension)" />
+    <ProcessorTestData Include="..\TeslaPowerwallCrestronDriver\IncludeInPkg\**\*" Exclude="..\TeslaPowerwallCrestronDriver\IncludeInPkg\**\*.xsd;..\TeslaPowerwallCrestronDriver\IncludeInPkg\Licenses\**\*" TargetPath="DriverTestData\%(RecursiveDir)%(Filename)%(Extension)" />
     <ProcessorTestData Include="..\TeslaPowerwallCrestronDriver\TeslaPowerwallCrestronDriver.json" TargetPath="DriverTestData\DriverDefinition.json" />
     <ProcessorTestData Include="..\LICENSE" TargetPath="Licenses\Package\LICENSE" />
     <ProcessorTestData Include="THIRD-PARTY-NOTICES.md" TargetPath="Licenses\Package\THIRD-PARTY-NOTICES.md" />

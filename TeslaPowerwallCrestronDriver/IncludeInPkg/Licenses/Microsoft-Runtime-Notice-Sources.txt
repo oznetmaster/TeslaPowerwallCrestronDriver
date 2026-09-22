@@ -1,0 +1,11 @@
+Microsoft-Runtime-NOTICES.txt preserves the identical upstream notice text from these package files (differences were limited to blank lines at EOF):
+
+Microsoft.Bcl.AsyncInterfaces-10.0.12-THIRD-PARTY-NOTICES.TXT
+Microsoft.Bcl.Memory-10.0.9-THIRD-PARTY-NOTICES.TXT
+Microsoft.Extensions.DependencyInjection.Abstractions-10.0.12-THIRD-PARTY-NOTICES.TXT
+Microsoft.Extensions.Logging.Abstractions-10.0.12-THIRD-PARTY-NOTICES.TXT
+System.Diagnostics.DiagnosticSource-10.0.12-THIRD-PARTY-NOTICES.TXT
+System.IO.Pipelines-10.0.12-THIRD-PARTY-NOTICES.TXT
+System.Security.Cryptography.ProtectedData-10.0.9-THIRD-PARTY-NOTICES.TXT
+System.Text.Encodings.Web-10.0.12-THIRD-PARTY-NOTICES.TXT
+System.Text.Json-10.0.12-THIRD-PARTY-NOTICES.TXT
