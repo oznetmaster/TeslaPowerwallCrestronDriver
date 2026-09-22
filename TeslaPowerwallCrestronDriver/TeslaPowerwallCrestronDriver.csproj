@@ -44,7 +44,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="TeslaPowerwallLibrary" Version="1.2.5" />
+		<PackageReference Include="TeslaPowerwallLibrary" Version="2.0.0" />
 		<PackageReference Include="Crestron.DeviceDrivers.DevKit" Version="27.0.24" />
 		<PackageReference Include="Crestron.SimplSharp.SDK.Library" Version="2.22.15" />
 		<PackageReference Include="Hafner.Compatibility.MetaPackage" Version="1.9.0" />
@@ -84,28 +84,18 @@
 	</Target>
 
 	<Target Name="MergeDependencies" AfterTargets="Build" Condition="'$(BuildForTests)' != 'true'">
-		<ItemGroup>
-			<MergeInputs Include="$(TargetPath)" />
-			<MergeInputs Include="$(TargetDir)TeslaPowerwallLibrary.dll" />
-			<MergeInputs Include="$(TargetDir)Newtonsoft.Json.dll" />
-			<MergeInputs Include="$(TargetDir)log4net.dll" />
-			<MergeInputs Include="$(TargetDir)Microsoft.Bcl.AsyncInterfaces.dll" />
-			<MergeInputs Include="$(TargetDir)Microsoft.Bcl.HashCode.dll" />
-			<MergeInputs Include="$(TargetDir)Microsoft.Bcl.Memory.dll" />
-			<MergeInputs Include="$(TargetDir)System.Runtime.CompilerServices.Unsafe.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.CallerInformationAttributes.G2.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.ConstantExpectedAttribute.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.DynamicallyAccessedMembersAttribute.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.ExperimentalAttribute.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.FeatureGuardAttribute.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.MetaPackage.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.NullableReferenceTypeAttributes.G1.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.NullableReferenceTypeAttributes.G2.dll" />
-			<MergeInputs Include="$(TargetDir)Hafner.Compatibility.NullableReferenceTypeAttributes.G3.dll" />
-		</ItemGroup>
-		<WriteLinesToFile File="$(TargetDir)merge_inputs.txt" Lines="@(MergeInputs)" Overwrite="true" />
-		<Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\ILRepackMerge.ps1&quot; -TargetPath &quot;$(TargetPath)&quot; -InputListFile &quot;$(TargetDir)merge_inputs.txt&quot; -LibDir &quot;$(TargetDir.TrimEnd('\'))&quot; -SdkLibDir &quot;$(LocalCrestronSdkLibDir)&quot; -FxRefDir &quot;$(LocalNet472ReferenceAssemblies)&quot; -FxRuntimeDir &quot;$(LocalNetFxRuntimeDir)&quot;" ContinueOnError="$(MergeDependenciesContinueOnError)" />
-		<Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\PatchMergedAssembly.ps1&quot; -AssemblyPath &quot;$(TargetPath)&quot; -OutputPath &quot;$(TargetDir)patched\$(AssemblyName).dll&quot;" ContinueOnError="false" />
+        <PropertyGroup>
+            <IlRepackToolDirectory Condition="'$(IlRepackToolDirectory)' == ''">$(UserProfile)\.dotnet\tools\.store\dotnet-ilrepack\2.0.45\dotnet-ilrepack\2.0.45\tools\net8.0\any</IlRepackToolDirectory>
+            <MergedDriverPath>$(TargetDir)merged\$(AssemblyName).dll</MergedDriverPath>
+        </PropertyGroup>
+        <ItemGroup>
+            <MergeInputs Include="$(TargetPath)" />
+            <!-- Merge the complete resolved runtime closure; Crestron SDK assemblies are provided by the processor. -->
+            <MergeInputs Include="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll' And !$([System.String]::Copy('%(ReferenceCopyLocalPaths.NuGetPackageId)').ToLowerInvariant().StartsWith('crestron.'))" />
+        </ItemGroup>
+        <WriteLinesToFile File="$(TargetDir)merge_inputs.txt" Lines="@(MergeInputs->'%(FullPath)')" Overwrite="true" />
+        <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\ILRepackMerge.ps1&quot; -TargetPath &quot;$(TargetPath)&quot; -OutputPath &quot;$(MergedDriverPath)&quot; -InputListFile &quot;$(TargetDir)merge_inputs.txt&quot; -LibDir &quot;$(TargetDir.TrimEnd('\'))&quot; -SdkLibDir &quot;$(LocalCrestronSdkLibDir)&quot; -FxRefDir &quot;$(LocalNet472ReferenceAssemblies)&quot; -FxRuntimeDir &quot;$(LocalNetFxRuntimeDir)&quot; -ToolDirectory &quot;$(IlRepackToolDirectory)&quot;" ContinueOnError="$(MergeDependenciesContinueOnError)" />
+        <Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\PatchMergedAssembly.ps1&quot; -AssemblyPath &quot;$(MergedDriverPath)&quot; -OutputPath &quot;$(TargetDir)patched\$(AssemblyName).dll&quot; -CecilPath &quot;$(IlRepackToolDirectory)\Mono.Cecil.dll&quot; -InputListFile &quot;$(TargetDir)merge_inputs.txt&quot; -ManifestPath &quot;$(MSBuildProjectDirectory)\TeslaPowerwallCrestronDriver.json&quot;" ContinueOnError="false" />
 	</Target>
 
 	<Target Name="PackageDriver" AfterTargets="MergeDependencies" Condition="'$(BuildForTests)' != 'true'">

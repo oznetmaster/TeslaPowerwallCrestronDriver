@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## 1.1.8 - 2026-09-22
+
+- Update TeslaPowerwallLibrary to 2.0.0, including fixes for partial operation changes, numeric zero reserve and stale settings caches.
+- Route library diagnostics through the owning driver's Crestron logger and filters.
+- Package System.Text.Json and Microsoft logging dependencies instead of Newtonsoft.Json and log4net. Preserve private resource helpers and serialized type metadata while merging assemblies.
+- Existing configuration, commands, properties and UI remain unchanged.
+
 ## 1.1.7 - 2026-09-15
 
 - Correct the driver tile to appear on the Home screen only, rather than both Home and room screens. Room assignment, configuration and public commands are unchanged.

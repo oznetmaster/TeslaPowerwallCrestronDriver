@@ -52,6 +52,7 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 	private const int ENERGY_ROW_COUNT = 24;
 
 	private readonly DriverControllerLogger _logger;
+	private readonly LibraryLogger _libraryLogger;
 	private readonly string _logControllerId;
 	private readonly UiDefinitionProperty _uiDefinition;
 	private readonly object _syncLock = new ();
@@ -112,6 +113,9 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		{
 		_logger = creationArgs.Logger;
 		_logControllerId = creationArgs.DriverId;
+        _libraryLogger = new LibraryLogger (
+            level => _logger?.IsEnabled (_logControllerId, level) == true,
+            (level, message) => _logger?.Log (_logControllerId, level, message));
 
 		var configurationArgs = DataDrivenConfigurationControllerArgs.FromResources (creationArgs, resources, ControllerId);
 		ConfigurationController = new DelegateDataDrivenConfigurationController (configurationArgs, ApplyConfigurationItems, null, null);

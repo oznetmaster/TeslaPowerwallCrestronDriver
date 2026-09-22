@@ -1,0 +1,1 @@
+TeslaPowerwallCrestronDriver 1.1.8 incorporates TeslaPowerwallLibrary 2.0.0 and its resolved runtime dependencies. The retained licenses and third-party notices apply independently of the driver license. Crestron SDK assemblies remain platform-provided dependencies.

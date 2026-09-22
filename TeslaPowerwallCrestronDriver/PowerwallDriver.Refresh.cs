@@ -234,6 +234,7 @@ public sealed partial class TeslaPowerwallDriver
 					FleetApiRefreshToken = _refreshToken,
 					SiteId = numericSiteId,
 					Timeout = TimeSpan.FromSeconds (15),
+					Logger = _libraryLogger,
 					}
 				: new TeslaPowerwallLibrary.PowerwallOptions
 					{
@@ -242,6 +243,7 @@ public sealed partial class TeslaPowerwallDriver
 					RefreshToken = _refreshToken,
 					SiteId = numericSiteId,
 					Timeout = TimeSpan.FromSeconds (15),
+					Logger = _libraryLogger,
 					};
 
 			var client = new TeslaPowerwallLibrary.Powerwall (options);

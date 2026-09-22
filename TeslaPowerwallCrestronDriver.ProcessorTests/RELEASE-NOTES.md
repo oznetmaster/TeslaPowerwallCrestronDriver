@@ -1,5 +1,12 @@
 # TeslaPowerwallCrestronDriver Tests
 
+## 1.1.8
+
+- Validate TeslaPowerwallLibrary 2.0.0 with System.Text.Json and caller-owned Microsoft ILogger logging.
+- Include 84 discovered cases: 61 unit, 20 lifecycle and three manual live tests. The eight new unit cases validate severity mapping, filtering and isolated logging scopes.
+- Run the live suite separately with dedicated Owner and Fleet credential-helper sessions. Both API configurations are required for local release validation; refresh tokens remain on Windows with the helper.
+- Exclude desktop runner dependencies and their Newtonsoft.Json dependency from the processor package.
+
 ## 1.1.7
 
 - Rebuild with CrestronHomeNUnit 1.2.1. Test execution now participates in the shared processor reservation used by the runner, Test Explorer, CLI and hardware CI.

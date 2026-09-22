@@ -7,7 +7,7 @@
     <ProcessorTestSdkRoot Condition="'$(ProcessorTestSdkRoot)' == ''">$(MSBuildProjectDirectory)\..\..\CrestronHomeNUnit</ProcessorTestSdkRoot>
     <BuildProcessorTestPackages Condition="'$(BuildProcessorTestPackages)' == '' And '$(BuildingInsideVisualStudio)' == 'true'">true</BuildProcessorTestPackages>
     <BuildProcessorTestPackages Condition="'$(BuildProcessorTestPackages)' == ''">false</BuildProcessorTestPackages>
-    <AssemblyName>TeslaPowerwallCrestronDriver.ProcessorTests</AssemblyName><RootNamespace>CrestronHomeNUnit.Driver</RootNamespace><Version>1.1.7</Version>
+    <AssemblyName>TeslaPowerwallCrestronDriver.ProcessorTests</AssemblyName><RootNamespace>CrestronHomeNUnit.Driver</RootNamespace><Version>1.1.8</Version>
   </PropertyGroup>
   <Import Project="$(ProcessorTestSdkRoot)\ProcessorTestPackage\ProcessorTestPackage.props" Condition="'$(BuildProcessorTestPackages)' == 'true'" />
   <ItemGroup Condition="'$(BuildProcessorTestPackages)' == 'true'">
@@ -17,7 +17,7 @@
     <ProcessorTestData Include="..\TeslaPowerwallCrestronDriver\TeslaPowerwallCrestronDriver.json" TargetPath="DriverTestData\DriverDefinition.json" />
     <ProcessorTestData Include="..\LICENSE" TargetPath="Licenses\Package\LICENSE" />
     <ProcessorTestData Include="THIRD-PARTY-NOTICES.md" TargetPath="Licenses\Package\THIRD-PARTY-NOTICES.md" />
-    <ProcessorTestData Include="licenses\*" TargetPath="Licenses\Package\licenses\%(Filename)%(Extension)" />
+    <ProcessorTestData Include="licenses\*" Exclude="licenses\Newtonsoft*;licenses\log4net*" TargetPath="Licenses\Package\licenses\%(Filename)%(Extension)" />
   </ItemGroup>
   <Import Project="$(ProcessorTestSdkRoot)\ProcessorTestPackage\ProcessorTestPackage.targets" Condition="'$(BuildProcessorTestPackages)' == 'true'" />
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
@@ -25,7 +25,7 @@
   <Target Name="SkipProcessorPackage"><Message Importance="high" Text="Build this processor project in Visual Studio or set BuildProcessorTestPackages=true." /></Target>
   <Target Name="ExcludeDesktopTestTooling" BeforeTargets="MergeDependencies" Condition="'$(BuildProcessorTestPackages)' == 'true'">
     <ItemGroup>
-      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="$([System.String]::Copy('%(ReferenceCopyLocalPaths.NuGetPackageId)').ToLowerInvariant().StartsWith('microsoft.testing.')) Or $([System.String]::Copy('%(ReferenceCopyLocalPaths.NuGetPackageId)').ToLowerInvariant().StartsWith('microsoft.testplatform.')) Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'Microsoft.ApplicationInsights' Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'Microsoft.CodeCoverage' Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'NUnit3TestAdapter'" />
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="$([System.String]::Copy('%(ReferenceCopyLocalPaths.NuGetPackageId)').ToLowerInvariant().StartsWith('microsoft.testing.')) Or $([System.String]::Copy('%(ReferenceCopyLocalPaths.NuGetPackageId)').ToLowerInvariant().StartsWith('microsoft.testplatform.')) Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'Microsoft.ApplicationInsights' Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'Microsoft.CodeCoverage' Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'NUnit3TestAdapter' Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'Newtonsoft.Json' Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'log4net'" />
     </ItemGroup>
   </Target>
 </Project>
