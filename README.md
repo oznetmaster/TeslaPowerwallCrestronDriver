@@ -216,7 +216,7 @@ Tesla and Powerwall are trademarks of Tesla, Inc.
 
 ## Automated tests
 
-The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 4 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 53 offline tests exercise driver logic without credentials or real device commands. The 20 processor lifecycle cases are excluded on Windows in this project; the dedicated desktop SDK harness exercises the same fixture sources.
+The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 5 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 53 offline tests exercise driver logic without credentials or real device commands. The 20 processor lifecycle cases are excluded on Windows in this project; the dedicated desktop SDK harness exercises the same fixture sources.
 
 ```powershell
 dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -c Release
@@ -288,3 +288,6 @@ The solution includes [TeslaPowerwallCrestronDriver.WorkflowTests](TeslaPowerwal
 The publish/release workflows support an explicit manual override when the processor or local self-hosted GitHub Actions runner is unavailable. Select `skip_hardware_checks` and provide a single-line `hardware_skip_reason`. Use the workflow's normal source and version controls. The override applies only to that invocation and is recorded with the exact source revision in its warning and job summary; it does not create a passing hardware-test result.
 
 GitHub-hosted validation remains mandatory for the checked-out source, and the normal build, tests and packaging steps still run. Wait for the configured hosted workflows to pass, or run them on the same source revision first. None of these hosted checks needs the local runner or processor. Automatic tag/release-triggered runs retain the normal hardware checks; use a manual invocation of the updated release workflow when an offline override is needed.
+## NUnit 5 test tooling
+
+All maintained NUnit suites use the official NUnit 5.0.0 framework. Async exception assertions are awaited, and discarded-task warnings fail test builds. Processor test packages use CrestronHomeNUnit SDK 2.2.0; workflow and Android suites, where provided, use the released 2.2.0 adapter. Tests remain available in Visual Studio, VS Code and the command line. Live and manual tests still require their documented devices and permissions. This is a test-tooling update; the published product version and runtime behavior are unchanged.
