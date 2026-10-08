@@ -138,10 +138,13 @@ Crestron Home Driver NuGet Publishing Standard v1 is **not** an official Crestro
 
 **An in-place driver update is supported, but reconfiguration is required.** This is an Entity V2 driver: keep the existing instance and apply the update in Crestron Home Setup. You do not need to remove and re-add the driver.
 
-1. Import the new package, then apply the available update to the existing **Tesla Powerwall** instance in Setup. Importing the package alone does not update that instance.
-2. Reopen the driver's configuration and complete the new configuration dialogs. Do this even if you are keeping the existing cloud connection.
-3. Choose **Cloud** for Owner or Fleet and review the site, credentials and cloud interval. For local access, choose **Gateway** or **Signed LAN**, supply the home-network endpoint and local credentials, and review the local interval and control permissions. Signed LAN requires an enrolled signing key; optional cloud history is configured separately.
-4. Save the configuration. Confirm installed version **2.0.000.0000**, the room assignment, online status, live readings and any programmed commands/events before returning the installation to service.
+1. Before updating, record the connection type, site ID, Fleet Client ID if used, polling intervals, and any local control/history settings. Have the required credentials available to enter again. **Do not assume Crestron Home will retain configuration values during reconfiguration.**
+2. Import the new package, then apply the available update to the existing **Tesla Powerwall** instance in Setup. Importing the package alone does not update that instance.
+3. Reopen the driver's configuration and complete the new configuration dialogs. Do this even if you are keeping the existing cloud connection.
+4. Review every field and re-enter any missing or incorrect values. Choose **Cloud** for Owner or Fleet and review the site, credentials and cloud interval. For local access, choose **Gateway** or **Signed LAN**, supply the home-network endpoint and local credentials, and review the local interval and control permissions. Signed LAN requires an enrolled signing key; optional cloud history is configured separately.
+5. Save the configuration. Confirm installed version **2.0.000.0000**, the room assignment, online status, live readings and any programmed commands/events before returning the installation to service.
+
+For cloud access, be prepared to obtain a new refresh token through the linked setup tool if the current credential is unavailable. Do not borrow another running client's rotating refresh token. For signed local access, keep the private provisioning profile/export so the same registered key can be supplied again; do not assume a masked field can be recovered from Crestron Home. Keep credential copies private.
 
 The major version marks this required configuration step. An automatic, unattended upgrade is not sufficient. Existing cloud authentication modes and programmable interfaces remain available.
 

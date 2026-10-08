@@ -6,7 +6,7 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 ## 2.0.0 - 2026-10-08
 
-- **Reconfiguration required:** update the existing Entity V2 driver in place, then complete its new configuration dialogs. Removing and re-adding the driver is not required.
+- **Reconfiguration required:** update the existing Entity V2 driver in place, then complete its new configuration dialogs. Removing and re-adding the driver is not required. Configuration retention is not guaranteed; have settings and credentials ready to re-enter.
 - Add Gateway and signed Powerwall 3 local access over Ethernet or home-network Wi-Fi using TeslaPowerwallLibrary 2.1.0.
 - Add independent signing-key provisioning and configurable local polling (15 seconds by default), with local controls read-only by default.
 - Allow separately configured cloud history alongside local live readings, while preserving Owner/Fleet connections and programmable interfaces.

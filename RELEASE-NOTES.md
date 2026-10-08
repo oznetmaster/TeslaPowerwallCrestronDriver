@@ -12,11 +12,12 @@
 
 ## Upgrade instructions
 
-1. Import `TeslaPowerwallCrestronDriver.pkg`, then apply the update to the existing instance in Crestron Home Setup.
-2. Reopen Configure and complete the new dialogs. Choose **Cloud** for Owner/Fleet, or **Gateway**/**Signed LAN** for a local connection. Review the credentials, site and polling intervals. Set local control permission and optional cloud history explicitly when using local access.
-3. Save and confirm version **2.0.000.0000**, the room assignment, online status and live readings. Check any programmed commands/events before returning the installation to service.
+1. Before updating, record the current connection/settings and have its credentials available to enter again. **Configuration retention during reconfiguration is not guaranteed.** Be prepared to obtain a fresh cloud credential if needed; retain the private provisioning profile/export for an existing signed local connection.
+2. Import `TeslaPowerwallCrestronDriver.pkg`, then apply the update to the existing instance in Crestron Home Setup.
+3. Reopen Configure and complete the new dialogs. Review every field and re-enter anything missing or incorrect. Choose **Cloud** for Owner/Fleet, or **Gateway**/**Signed LAN** for a local connection. Review the credentials, site and polling intervals. Set local control permission and optional cloud history explicitly when using local access.
+4. Save and confirm version **2.0.000.0000**, the room assignment, online status and live readings. Check any programmed commands/events before returning the installation to service.
 
-Importing the package without updating the instance and completing configuration is not sufficient. Existing Owner/Fleet modes and programmable interfaces remain available. The 1.2.0 publication is superseded; the prepared 1.2.1 version was not published.
+Importing the package without updating the instance and completing configuration is not sufficient. Existing Owner/Fleet modes and programmable interfaces remain available; this does not guarantee retention of stored settings or credentials. The 1.2.0 publication is superseded; the prepared 1.2.1 version was not published.
 
 ## Downloads and validation
 
