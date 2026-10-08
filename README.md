@@ -1,17 +1,17 @@
 # TeslaPowerwallCrestronDriver
 
-For shipped changes, see the [changelog](CHANGELOG.md). Test, CI and build history is recorded separately in [development and validation history](DEVELOPMENT-HISTORY.md).
+For shipped changes, see the [changelog](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/CHANGELOG.md). Test, CI and build history is recorded separately in [development and validation history](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/DEVELOPMENT-HISTORY.md).
 
 
 The driver tile appears on the **Home screen only**. It is not displayed on room screens; its room assignment remains available for configuration.
 
-See the [changelog](CHANGELOG.md) for release history and the [release notes](RELEASE-NOTES.md) for the current driver update. Driver releases are made for runtime fixes or dependency changes; adding tests alone does not require a driver release.
+See the [changelog](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/CHANGELOG.md) for release history and the [release notes](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/RELEASE-NOTES.md) for the current driver update. Driver releases are made for runtime fixes or dependency changes; adding tests alone does not require a driver release.
 
 A **Crestron Home** Entity V2 driver that integrates a **Tesla Powerwall** energy site via local access, the Tesla Owner API or the official Tesla Fleet API, providing live power flow, battery status, energy history, and site control from the Crestron Home app.
 
 Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent, unofficial driver and is not affiliated with, endorsed by, or sponsored by Tesla, Inc. Crestron and Crestron Home are trademarks or registered trademarks of Crestron Electronics, Inc. This project is not affiliated with, endorsed by, or sponsored by Crestron Electronics, Inc.
 
-[![License: MIT + Commons Clause](https://img.shields.io/badge/License-MIT%20%2B%20Commons%20Clause-blue.svg)](LICENSE)
+[![License: MIT + Commons Clause](https://img.shields.io/badge/License-MIT%20%2B%20Commons%20Clause-blue.svg)](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/LICENSE)
 
 ---
 
@@ -44,7 +44,7 @@ The Fleet API covers everything this driver uses — live status, energy/impact 
 The driver connects over your home network using Ethernet or normal Powerwall Wi-Fi. These are two network interfaces to the same local API, not different connection modes.
 
 - **Gateway** — customer-authenticated local HTTPS reads and supported reserve/mode controls. Available telemetry depends on the device.
-- **Signed LAN** — Powerwall 3 TEDAPI over a hostname or IP address, using the local customer password and a separately enrolled RSA-4096 driver key. Follow [local provisioning](TeslaPowerwallCrestronDriver.LocalSetup/README.md).
+- **Signed LAN** — Powerwall 3 TEDAPI over a hostname or IP address, using the local customer password and a separately enrolled RSA-4096 driver key. Follow [local provisioning](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.LocalSetup/README.md).
 
 Local status defaults to a configurable 15-second delay between completed polls. Settings changes require **Allow Local Setting Changes**. Energy and Impact pages require explicit **Use Cloud History with Local Access**, separate cloud credentials and the numeric ID of the same physical site. Cloud failure does not switch live monitoring away from local access. Storm Watch is available through Owner cloud mode only.
 
@@ -103,7 +103,7 @@ Shows the settings supplied by the selected connection. Local controls are disab
 
 ### Programming
 
-For Crestron Home programmers, every Settings control above is also exposed as a programmable command, and the driver raises programmable events for grid status changed to backup/restored, Storm Watch activated/deactivated, battery reserve low, and battery fully charged — see [PowerwallDriver.Commands.cs](TeslaPowerwallCrestronDriver/PowerwallDriver.Commands.cs) for the full list.
+For Crestron Home programmers, every Settings control above is also exposed as a programmable command, and the driver raises programmable events for grid status changed to backup/restored, Storm Watch activated/deactivated, battery reserve low, and battery fully charged — see [PowerwallDriver.Commands.cs](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver/PowerwallDriver.Commands.cs) for the full list.
 
 ---
 
@@ -130,7 +130,7 @@ Crestron Home Driver NuGet Publishing Standard v1 is **not** an official Crestro
 1. Download `TeslaPowerwallCrestronDriver.pkg` from the release assets, or extract it from the NuGet package.
 2. Connect to the processor using SFTP and your processor credentials. Upload the `.pkg` to `/user/ThirdPartyDrivers/Import` and allow the import to finish.
 3. Open **Crestron Home Setup**, connect to the processor, and open **Pair Devices**. Select **Tesla Powerwall** under manufacturer **Tesla**, category **Energy Automation**.
-4. Select the connection method and enter its configuration below. For signed local access, complete [local provisioning](TeslaPowerwallCrestronDriver.LocalSetup/README.md) first.
+4. Select the connection method and enter its configuration below. For signed local access, complete [local provisioning](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.LocalSetup/README.md) first.
 5. Save the configuration and assign the driver to a room. Its tile appears on the **Home screen**, not the room screen.
 6. Open Home on a touch panel or app. Confirm that the tile is online and opens the live power page.
 
@@ -229,7 +229,7 @@ Typical release flow:
 
 ## License
 
-MIT + Commons Clause © 2026 Neil Colvin — see [LICENSE](LICENSE).
+MIT + Commons Clause © 2026 Neil Colvin — see [LICENSE](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/LICENSE).
 
 Free to use and modify. You may not sell the Software as a standalone product or sublicense it.
 Commercial system integration work (for example, a Crestron installer commissioning a customer system) is explicitly permitted, even where a fee is charged for that service.
@@ -243,13 +243,13 @@ Tesla and Powerwall are trademarks of Tesla, Inc.
 
 ## Automated tests
 
-The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 5 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 87 offline unit cases exercise driver logic without credentials or real device commands. The 29 processor lifecycle cases are skipped by the net472 Windows run; the desktop SDK harness executes them alongside 11 Windows provisioning cases. See the [test guide](TeslaPowerwallCrestronDriver.Tests/README.md) and [Android UI tests](TeslaPowerwallCrestronDriver.AndroidTests/README.md).
+The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 5 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 87 offline unit cases exercise driver logic without credentials or real device commands. The 29 processor lifecycle cases are skipped by the net472 Windows run; the desktop SDK harness executes them alongside 11 Windows provisioning cases. See the [test guide](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.Tests/README.md) and [Android UI tests](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.AndroidTests/README.md).
 
 ```powershell
 dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -c Release
 ```
 
-Build the processor project in Debug in Visual Studio to build and deploy using private deployment settings. See [processor test instructions](TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for setup, suites, tile operation and UI separation. Processor packages are not published to NuGet. See [CHANGELOG](CHANGELOG.md) for changes.
+Build the processor project in Debug in Visual Studio to build and deploy using private deployment settings. See [processor test instructions](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for setup, suites, tile operation and UI separation. Processor packages are not published to NuGet. See [CHANGELOG](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/CHANGELOG.md) for changes.
 
 
 ### Expanded driver behavior tests
@@ -258,7 +258,7 @@ Cover Owner/Fleet token callbacks from current and replaced clients, and delayed
 
 Changing authentication mode or Fleet application requires a fresh token; rejected edits preserve active configuration; refresh interval boundaries are validated; clearing configuration removes active and pending credentials and resets availability.
 
-The current source includes offline, SDK lifecycle and optional live API/UI-binding tests; see the [test matrix](TeslaPowerwallCrestronDriver.Tests/README.md). The processor package remains **net472 only**, appears under **Utility** in Configure, and can run independently through its own tile or the Windows NUnit runner. The offline and lifecycle fixtures use synthetic data. The optional Live Site suite exercises real driver polling and state publication against the selected Tesla energy site, without sending control commands.
+The current source includes offline, SDK lifecycle and optional live API/UI-binding tests; see the [test matrix](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.Tests/README.md). The processor package remains **net472 only**, appears under **Utility** in Configure, and can run independently through its own tile or the Windows NUnit runner. The offline and lifecycle fixtures use synthetic data. The optional Live Site suite exercises real driver polling and state publication against the selected Tesla energy site, without sending control commands.
 
 `TeslaPowerwallCrestronDriver.Lifecycle.Tests` runs the entity checks against the real desktop SDK on .NET 10. It compiles the relevant driver sources and shares fixture sources with the net472 processor tests. Building this project does not deploy a driver. A locally supplied `Newtonsoft.Json.Compact.dll` is needed by the SDK's manifest reader; it is supplied by the processor at runtime and must not be added to source control or bundled with the processor test package.
 
@@ -282,7 +282,7 @@ Deployment validation compares the exact built `.pkg` against the imported catal
 
 Run `pwsh -File tools/Test-DriverVersioning.ps1` to check these rules with temporary manifests; this does not change the working driver manifest or deploy anything.
 
-See [versioning details](docs/Versioning.md) for build, release and installed-instance verification rules.
+See [versioning details](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/docs/Versioning.md) for build, release and installed-instance verification rules.
 ### Desktop SDK dependency in CI
 
 The SDK's desktop manifest reader needs its `Newtonsoft.Json.Compact.dll` runtime dependency. Supply a local SDK/runtime copy through the `CompactJsonPath` MSBuild property (or private `DesktopTest.Local.props`). Maintainer CI restores the same verified copy from encrypted Actions secrets into its temporary directory; it is not committed, attached to release assets or included in processor packages. Fork pull requests do not receive these secrets and require a trusted maintainer validation run.
@@ -290,15 +290,15 @@ The SDK's desktop manifest reader needs its `Newtonsoft.Json.Compact.dll` runtim
 
 For automated local tests, processor tests and gated driver deployment, see the [Crestron Home NUnit CI development guide](https://github.com/oznetmaster/CrestronHomeNUnit/blob/HEAD/docs/ContinuousIntegration.md). It covers private configuration, live-test gates, install/update waits, results and optional test-package removal.
 
-Local build/deployment overrides can be created by copying [TeslaPowerwallCrestronDriver.Local.targets.example](TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.Local.targets.example) to `TeslaPowerwallCrestronDriver.Local.targets` beside the project. Fill in your own paths privately and exclude the resulting local file with `.git/info/exclude`; it is not part of the published source.
+Local build/deployment overrides can be created by copying [TeslaPowerwallCrestronDriver.Local.targets.example](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.Local.targets.example) to `TeslaPowerwallCrestronDriver.Local.targets` beside the project. Fill in your own paths privately and exclude the resulting local file with `.git/info/exclude`; it is not part of the published source.
 
 ### Optional live site tests
 
-Use a separately issued test credential; each installed driver keeps its existing credentials and independent rotation. Do not copy one driver's refresh token into the tests. Owner API (`cloud`) and Fleet API (`fleet`) use separate test profiles. Local tests accept the same portable `LiveTestSettings.json` on Windows and the processor, including the local endpoint, password and registered signing key. See the [local provisioning guide](TeslaPowerwallCrestronDriver.LocalSetup/README.md).
+Use a separately issued test credential; each installed driver keeps its existing credentials and independent rotation. Do not copy one driver's refresh token into the tests. Owner API (`cloud`) and Fleet API (`fleet`) use separate test profiles. Local tests accept the same portable `LiveTestSettings.json` on Windows and the processor, including the local endpoint, password and registered signing key. See the [local provisioning guide](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.LocalSetup/README.md).
 
 The library's [test credential helper](https://github.com/oznetmaster/TeslaPowerwallLibrary/blob/HEAD/TeslaPowerwallLibrary.TestCredentials/README.md) accepts the initial refresh token and, for Fleet, the client ID. It maintains subsequent tokens in an encrypted Windows store and holds exclusive ownership while tests run. The helper is included with library 1.2.5; these live fixtures are included with driver 1.1.6. Dedicated Owner authentication passed all three live tests on Windows and the processor. The complete gated workflow also passed 73 local tests, 73 processor tests and three installed-driver health checks after updating the actual driver. Dedicated Fleet read-only tests have also passed on Windows and the processor.
 
-Start a helper `session`, select **Live Site** in the Windows runner and supply its freshly generated `RunInputs/LiveTestSettings.json` using **Test inputs**. Keep the helper open until all tests stop. The runner enables the selected live suite for that session. For desktop automation, wrap the desktop SDK harness with the helper's `run` command, filter `TestCategory=Live`, and enable NUnit's `EnableLiveTests` parameter. The fixture reads `TestDataDirectory`, then `TESLA_LIVE_TEST_DATA_DIRECTORY`, then the private `%LOCALAPPDATA%/TeslaPowerwallCrestronDriver` folder. Ordinary CI excludes Live. The [input example](TeslaPowerwallCrestronDriver.Tests/LiveTestSettings.example.json) documents the generated format; users do not need to obtain access tokens manually.
+Start a helper `session`, select **Live Site** in the Windows runner and supply its freshly generated `RunInputs/LiveTestSettings.json` using **Test inputs**. Keep the helper open until all tests stop. The runner enables the selected live suite for that session. For desktop automation, wrap the desktop SDK harness with the helper's `run` command, filter `TestCategory=Live`, and enable NUnit's `EnableLiveTests` parameter. The fixture reads `TestDataDirectory`, then `TESLA_LIVE_TEST_DATA_DIRECTORY`, then the private `%LOCALAPPDATA%/TeslaPowerwallCrestronDriver` folder. Ordinary CI excludes Live. The [input example](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.Tests/LiveTestSettings.example.json) documents the generated format; users do not need to obtain access tokens manually.
 
 The fixture shares one connection per run, verifies site selection and published battery/operating state, and refreshes site data. Internally, only an access token is sent to the processor, so package removal cannot discard the rotating test credential. If it expires, stop and prepare a new session. This live fixture does not validate the driver's credential-storage path or operate battery controls; separate lifecycle tests cover token callbacks and installed-driver workflow checks cover deployed health. Private settings, paths and credentials stay outside source control, packages and CI artifacts.
 
@@ -308,7 +308,7 @@ Driver 1.1.6 uses TeslaPowerwallLibrary 1.2.5 to discover the authenticated acco
 
 ## Visual Studio processor workflow
 
-The solution includes [TeslaPowerwallCrestronDriver.WorkflowTests](TeslaPowerwallCrestronDriver.WorkflowTests/README.md), using the published Crestron Home Test Adapter. It exposes the complete gated workflow in Test Explorer while the ordinary NUnit fixtures remain available for local testing. Configure its private settings before execution; hosted CI verifies discovery without accessing hardware.
+The solution includes [TeslaPowerwallCrestronDriver.WorkflowTests](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.WorkflowTests/README.md), using the published Crestron Home Test Adapter. It exposes the complete gated workflow in Test Explorer while the ordinary NUnit fixtures remain available for local testing. Configure its private settings before execution; hosted CI verifies discovery without accessing hardware.
 
 ## Publishing when local hardware is unavailable
 
@@ -317,6 +317,6 @@ The publish/release workflows support an explicit manual override when the proce
 GitHub-hosted validation remains mandatory for the checked-out source, and the normal build, tests and packaging steps still run. Wait for the configured hosted workflows to pass, or run them on the same source revision first. None of these hosted checks needs the local runner or processor. Automatic tag/release-triggered runs retain the normal hardware checks; use a manual invocation of the updated release workflow when an offline override is needed.
 ## NUnit 5 test tooling
 
-All maintained suites use NUnit 5.0.0 and NUnit3TestAdapter 6.3.0. Workflow and Android tests use CrestronHomeNUnit.TestAdapter 2.3.0; processor packages use the pinned public SDK 2.3.0 source. See the [test dependency and live-input guide](TeslaPowerwallCrestronDriver.Tests/README.md).
+All maintained suites use NUnit 5.0.0 and NUnit3TestAdapter 6.3.0. Workflow and Android tests use CrestronHomeNUnit.TestAdapter 2.3.0; processor packages use the pinned public SDK 2.3.0 source. See the [test dependency and live-input guide](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.Tests/README.md).
 
-The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 87 unit and 29 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.
+The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 87 unit and 29 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.
