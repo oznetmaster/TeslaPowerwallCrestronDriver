@@ -10,7 +10,6 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 - Add Gateway and signed Powerwall 3 local access over Ethernet or home-network Wi-Fi using TeslaPowerwallLibrary 2.1.0.
 - Add independent signing-key provisioning and configurable local polling (15 seconds by default), with local controls read-only by default.
 - Allow separately configured cloud history alongside local live readings, while preserving Owner/Fleet connections and programmable interfaces.
-- Limit configuration to Cloud, Gateway and Signed LAN.
 
 ## Withdrawn 1.2 series
 
