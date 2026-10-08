@@ -36,11 +36,4 @@ jobs:
         run: |
           if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) { throw 'NuGet credential is unavailable.' }
           dotnet nuget delete CrestronHomeDriver.Tesla.Powerwall 1.2.0 --source https://api.nuget.org/v3/index.json --api-key $env:NUGET_API_KEY --non-interactive
-          if ($LASTEXITCODE) { throw 'NuGet unlisting failed; GitHub release retained.' }
-      - name: Remove superseded GitHub release while retaining source tag
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release delete v1.2.0 --repo oznetmaster/TeslaPowerwallCrestronDriver --yes
-          if ($LASTEXITCODE) { throw 'GitHub release withdrawal failed.' }
+          if ($LASTEXITCODE) { throw 'NuGet unlisting failed; check the API key unlisting permission.' }
