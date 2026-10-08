@@ -1,0 +1,46 @@
+name: Withdraw superseded 1.2.0
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  withdraw:
+    if: github.ref == 'refs/heads/master'
+    runs-on: windows-latest
+    steps:
+      - name: Verify replacement is publicly downloadable
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $release = gh release view v2.0.0 --repo oznetmaster/TeslaPowerwallCrestronDriver --json isDraft,isPrerelease,assets | ConvertFrom-Json
+          if ($LASTEXITCODE -or $release.isDraft -or $release.isPrerelease -or 'TeslaPowerwallCrestronDriver.pkg' -notin $release.assets.name) { throw 'Replacement release is not ready.' }
+          $package = Join-Path $env:RUNNER_TEMP 'replacement.nupkg'
+          Invoke-WebRequest 'https://api.nuget.org/v3-flatcontainer/crestronhomedriver.tesla.powerwall/2.0.0/crestronhomedriver.tesla.powerwall.2.0.0.nupkg' -OutFile $package
+          $archive = [IO.Compression.ZipFile]::OpenRead($package)
+          try {
+            $entry = @($archive.Entries | Where-Object FullName -like '*.nuspec')
+            if ($entry.Count -ne 1) { throw 'Replacement package metadata is missing.' }
+            $reader = [IO.StreamReader]::new($entry[0].Open())
+            try { [xml]$metadata = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            if ($metadata.package.metadata.id -cne 'CrestronHomeDriver.Tesla.Powerwall' -or $metadata.package.metadata.version -cne '2.0.0') { throw 'Replacement package identity mismatch.' }
+          } finally { $archive.Dispose() }
+      - name: Unlist superseded NuGet version
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) { throw 'NuGet credential is unavailable.' }
+          dotnet nuget delete CrestronHomeDriver.Tesla.Powerwall 1.2.0 --source https://api.nuget.org/v3/index.json --api-key $env:NUGET_API_KEY --non-interactive
+          if ($LASTEXITCODE) { throw 'NuGet unlisting failed; GitHub release retained.' }
+      - name: Remove superseded GitHub release while retaining source tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete v1.2.0 --repo oznetmaster/TeslaPowerwallCrestronDriver --yes
+          if ($LASTEXITCODE) { throw 'GitHub release withdrawal failed.' }
