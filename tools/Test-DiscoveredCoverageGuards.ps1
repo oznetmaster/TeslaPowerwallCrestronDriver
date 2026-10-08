@@ -43,4 +43,16 @@ try {
     [IO.File]::WriteAllText($temporary,'<test-run />')
     Reject { Read-TestTree $temporary }
 } finally { Remove-Item -LiteralPath $temporary -ErrorAction SilentlyContinue }
+$inventory = @(
+    [pscustomobject]@{Name='Unit';Live=$false;Processor=$false;LocalLive=$false},
+    [pscustomobject]@{Name='Lifecycle';Live=$false;Processor=$true;LocalLive=$false},
+    [pscustomobject]@{Name='CommonLive';Live=$true;Processor=$true;LocalLive=$false},
+    [pscustomobject]@{Name='LocalUi';Live=$true;Processor=$true;LocalLive=$true}
+)
+Assert-SameTests @('Unit') @(Get-SuiteTests $inventory 'unit') 'Unit selection'
+Assert-SameTests @('Lifecycle') @(Get-SuiteTests $inventory 'lifecycle') 'Lifecycle selection'
+Assert-SameTests @('CommonLive') @(Get-SuiteTests $inventory 'live') 'Cloud selection'
+Assert-SameTests @('CommonLive','LocalUi') @(Get-SuiteTests $inventory 'local-live') 'Local selection'
+$checks += 4
+Reject { Get-SuiteTests $inventory 'unknown' }
 Write-Host "$checks discovery coverage guard checks passed."

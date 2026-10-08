@@ -83,4 +83,60 @@ public sealed class ConfigurationLifecycleTests
 		Assert.That (state.PropertyValues["readyIndicator:isReady"].GetValue<bool> (), Is.False);
 		Assert.That (Apply (new Dictionary<string, DriverEntityValue?> ()).ConfigurationErrorsByItemId.Keys, Is.EquivalentTo (new[] { "RefreshToken" }));
 		}
+	/// <summary>Checks independent local configuration and explicit cloud history enablement.</summary>
+	/// <param name="history">Whether history was enabled by the installer.</param>
+	[TestCase (false)]
+	[TestCase (true)]
+	public void LocalCloudHistoryRequiresExplicitEnablementAndExactSite (bool history)
+		{
+		var errors = Apply (new Dictionary<string, DriverEntityValue?>
+			{
+			["ConnectionMode"] = new DriverEntityValue ("Gateway"),
+			["LocalHost"] = new DriverEntityValue ("192.0.2.1"),
+			["UseCloudHistory"] = new DriverEntityValue (history.ToString ())
+			});
+		Assert.That (errors.ConfigurationErrorsByItemId.ContainsKey ("LocalPassword"), Is.True);
+		Assert.That (errors.ConfigurationErrorsByItemId.ContainsKey ("RefreshToken"), Is.EqualTo (history));
+		Assert.That (errors.ConfigurationErrorsByItemId.ContainsKey ("SiteId"), Is.EqualTo (history));
+		Assert.That (Field ("_refreshCancellationTokenSource").GetValue (_driver), Is.Null);
+		}
+
+	/// <summary>Checks that local credentials and intervals clear along with cloud credentials.</summary>
+	[Test]
+	public void ClearRemovesPendingLocalCredentials ()
+		{
+		Apply (new Dictionary<string, DriverEntityValue?>
+			{
+			["ConnectionMode"] = new DriverEntityValue ("Signed LAN"),
+			["LocalPassword"] = new DriverEntityValue ("synthetic-local-password"),
+			["LocalSigningKey"] = new DriverEntityValue ("synthetic-key"),
+			["LocalRefreshIntervalSeconds"] = new DriverEntityValue (60L)
+			});
+		Apply (null, clear: true);
+		foreach (string name in new[] { "_local", "_pendingLocal" })
+			{
+			var settings = (LocalConnectionSettings)Field (name).GetValue (_driver);
+			Assert.That (settings.Password, Is.Empty);
+			Assert.That (settings.SigningKey, Is.Empty);
+			Assert.That (settings.IsLocal, Is.False);
+			Assert.That (settings.IntervalSeconds, Is.EqualTo (15));
+			}
+		}
+
+	/// <summary>Blank optional cloud intervals keep the default when the SDK submits an unused field.</summary>
+	/// <param name="value">The empty installer field representation.</param>
+	[TestCase (""), TestCase (" ")]
+	public void EmptyOptionalCloudIntervalRetainsDefault (string value)
+		{
+		var errors = Apply (new Dictionary<string, DriverEntityValue?>
+			{
+			["ConnectionMode"] = new DriverEntityValue ("Gateway"),
+			["RefreshIntervalSeconds"] = new DriverEntityValue (value)
+			});
+		Assert.That (errors.ConfigurationErrorsByItemId.ContainsKey ("RefreshIntervalSeconds"), Is.False);
+		Assert.That (errors.ConfigurationErrorsByItemId.ContainsKey ("LocalPassword"), Is.True,
+			"Missing local credentials prevent network activity in this regression test.");
+		Assert.That (Field ("_pendingRefreshIntervalSeconds").GetValue (_driver), Is.EqualTo (60));
+		Assert.That (Field ("_refreshCancellationTokenSource").GetValue (_driver), Is.Null);
+		}
 	}

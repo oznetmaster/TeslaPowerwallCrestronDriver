@@ -17,6 +17,12 @@
     {
       "Id": "live",
       "Name": "TeslaPowerwallCrestronDriver Tests - Live Site",
+      "FilterXml": "<filter><and><cat>Live</cat><not><cat>LocalLive</cat></not></and></filter>",
+      "ManualOnly": true
+    },
+    {
+      "Id": "local-live",
+      "Name": "TeslaPowerwallCrestronDriver Tests - Local Live and UI",
       "FilterXml": "<filter><cat>Live</cat></filter>",
       "ManualOnly": true
     }

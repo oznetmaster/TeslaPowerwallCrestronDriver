@@ -27,7 +27,7 @@ $pkg = Join-Path $output "$Package.pkg"
 # Inspect the actual shipped assembly, not just pre-package build output.
 $extracted = Join-Path $root ('artifacts/verify-' + [Guid]::NewGuid().ToString('N'))
 [IO.Compression.ZipFile]::ExtractToDirectory($pkg, $extracted)
-& "$root/tools/Test-DiscoveredCoverage.ps1" -Stage Package -SdkRoot $SdkRoot -PackageAssembly "$extracted/$Package.dll" -SourceInventory "$root/artifacts/test-results/TeslaPowerwallCrestronDriver.Lifecycle.Tests/inventory.json" -ResultsDirectory "$root/artifacts/validation"
+& "$root/tools/Test-DiscoveredCoverage.ps1" -Stage Package -SdkRoot $SdkRoot -PackageAssembly "$extracted/$Package.dll" -SourceInventory "$root/artifacts/test-results/TeslaPowerwallCrestronDriver.Tests/inventory.json" -ResultsDirectory "$root/artifacts/validation"
 $manifest = Get-Content "$projectDirectory/$Package.json" -Raw | ConvertFrom-Json
 if ($manifest.GeneralInformation.DeviceType -ne 'Utility') { throw 'Processor test packages must use the Utility category.' }
 $revision = git -C $root rev-parse HEAD

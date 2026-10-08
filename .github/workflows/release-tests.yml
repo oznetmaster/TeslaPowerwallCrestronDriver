@@ -103,7 +103,7 @@ jobs:
           "TEST_PROJECT_DIRECTORY=$directory" >> $env:GITHUB_ENV
       - name: Install packaging tools
         shell: pwsh
-        run: '& "$env:PROCESSOR_SDK/tools/InstallCiTools.ps1"'
+        run: '& ./tools/InstallCiTools.ps1'
       - name: Restore private desktop SDK dependency
         env:
           COMPACT_1: ${{ secrets.CI_COMPACT_JSON_1 }}

@@ -7,7 +7,7 @@ The driver tile appears on the **Home screen only**. It is not displayed on room
 
 See the [changelog](CHANGELOG.md) for release history and the [release notes](RELEASE-NOTES.md) for the current driver update. Driver releases are made for runtime fixes or dependency changes; adding tests alone does not require a driver release.
 
-A **Crestron Home** Entity V2 driver that integrates a **Tesla Powerwall** energy site via the Tesla Owner API or the official Tesla Fleet API, providing live power flow, battery status, energy history, and site control from the Crestron Home app.
+A **Crestron Home** Entity V2 driver that integrates a **Tesla Powerwall** energy site via local access, the Tesla Owner API or the official Tesla Fleet API, providing live power flow, battery status, energy history, and site control from the Crestron Home app.
 
 Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent, unofficial driver and is not affiliated with, endorsed by, or sponsored by Tesla, Inc. Crestron and Crestron Home are trademarks or registered trademarks of Crestron Electronics, Inc. This project is not affiliated with, endorsed by, or sponsored by Crestron Electronics, Inc.
 
@@ -19,13 +19,13 @@ Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent
 
 This driver is a **Crestron Home energy-automation Entity V2 driver** implemented on the **Crestron Home SDK Entity V2 Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
 
-The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using either its Tesla Owner API (cloud) support or its official Tesla Fleet API support. Only an OAuth refresh token is required for either mode — the library automatically derives and renews the access token from it on every connection.
+The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using TeslaPowerwallLibrary 2.1.0. Cloud connections obtain and renew access tokens from their configured refresh token. Local connections use their own endpoint and credentials; they do not require a running Windows application.
 
 ---
 
 ## Supported Connection Modes
 
-This driver connects to Tesla using one of two modes, via `TeslaPowerwallLibrary`. Which mode is used is selected entirely by configuration: leave **Tesla Fleet API Client ID** blank to use the Tesla Owner API, or set it to use the Tesla Fleet API (see [Configuration](#configuration) below).
+Select **Connection** in Configure. Existing installations retain **Cloud**: leave **Tesla Fleet API Client ID** blank for Owner, or set it for Fleet. Local choices are described below.
 
 ### Tesla Owner API (Cloud)
 
@@ -39,10 +39,13 @@ Uses Tesla's officially supported, documented Fleet API. Requires a Tesla Fleet 
 
 The Fleet API covers everything this driver uses — live status, energy/impact history, backup reserve, operating mode, and grid export control — with one exception: **Storm Watch is not available through the Fleet API**. When a Client ID is configured, the Storm Watch toggle is hidden from the Settings page and the `setStormWatchEnabled` command is a no-op.
 
-### Not Yet Supported
+### Local access
 
-- **Local Mode (Powerwall 2 / Powerwall+ only)** — `TeslaPowerwallLibrary` can connect directly to a Gateway 2's local REST API over your home LAN, but this driver does not yet expose it as a configuration option. Not supported on Powerwall 3 in any case, since PW3 replaces this local API with TEDAPI.
-- **TEDAPI (Powerwall 3 local access)** — Scaffolded in `TeslaPowerwallLibrary` but not yet complete; requires physical/network access to the Powerwall 3's isolated local interface.
+- **Gateway** — customer-authenticated local HTTPS reads and supported reserve/mode controls. Available telemetry depends on the device.
+- **Setup Wi-Fi** — TEDAPI reads through an interface reachable from the processor, using the full equipment-label password. This driver keeps this connection read-only.
+- **Signed LAN** — Powerwall 3 TEDAPI over a hostname or IP address, using the local customer password and a separately enrolled RSA-4096 driver key. Follow [local provisioning](TeslaPowerwallCrestronDriver.LocalSetup/README.md).
+
+Local status defaults to a configurable 15-second delay between completed polls. Settings changes require **Allow Local Setting Changes**. Energy and Impact pages require explicit **Use Cloud History with Local Access**, separate cloud credentials and the numeric ID of the same physical site. Cloud failure does not switch live monitoring away from local access. Storm Watch is available through Owner cloud mode only.
 
 See the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository for the underlying library's full roadmap and known issues.
 
@@ -63,11 +66,11 @@ See the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLib
 
 ## Usage
 
-The pages below roughly follow the layout of the Tesla mobile app, but everything shown is generated by this driver directly from the Tesla cloud data described here — no app access is required to use it.
+The pages below roughly follow the layout of the Tesla mobile app, but everything shown is generated by this driver from the selected connection and any explicitly enabled cloud history — no app access is required to use it.
 
 ### Home tile and Main page
 
-The device tile shows current home power consumption (with a `BKUP` suffix whenever the grid is down and the Powerwall is supplying the house) plus a compact summary of which sources are currently contributing. The Main page breaks that out into four rows — House, Solar, Grid, and Powerwall — each showing that source's live power, plus a status block showing a plain-language summary, the current operation mode, and the current grid export mode. From the Main page you can navigate to the Energy page, the Impact page, or the Settings page.
+The device tile shows current home power consumption (with a `BKUP` suffix whenever the grid is down and the Powerwall is supplying the house) plus a compact summary of which sources are currently contributing. The Main page breaks that out into four rows — House, Solar, Grid, and Powerwall — each showing that source's live power, plus a status block showing a plain-language summary, the current operation mode, and the current grid export mode. From the Main page you can open Settings. Energy and Impact are available for cloud connections, or when cloud history is explicitly enabled for a local connection. Local values not supplied by the device remain unavailable.
 
 ### Energy page
 
@@ -88,11 +91,11 @@ Shows how self-sufficient the site was for the selected period: a gauge with the
 
 ### Settings page
 
-Lets you adjust the site directly from Crestron Home:
+Shows the settings supplied by the selected connection. Local controls are disabled until **Allow Local Setting Changes** is enabled. Unsupported settings are hidden. Available controls include:
 
 - **Backup Reserve** — the minimum battery charge percentage reserved for outages
 - **Charge From Grid** — allow the battery to charge from the grid, not just from solar
-- **Storm Watch** — Tesla's predictive pre-charge ahead of severe weather forecasts (only shown when connected via the Tesla Owner API; not available on the Tesla Fleet API)
+- **Storm Watch** — Tesla's predictive pre-charge ahead of severe weather forecasts (only shown when connected via the Tesla Owner API)
 - **Operation Mode** — Self Powered, Backup Only, or Autonomous
 - **Grid Export** — Battery OK, Solar Only, or Never
 - **Refresh Now** — forces an immediate refresh instead of waiting for the next scheduled poll
@@ -108,8 +111,8 @@ For Crestron Home programmers, every Settings control above is also exposed as a
 | Requirement | Details |
 |---|---|
 | Crestron Home processor | Running a firmware version compatible with Entity V2 drivers |
-| Tesla account | Must have one or more Powerwalls linked to the account |
-| Tesla OAuth refresh token | Obtained using the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) login tool — see [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below |
+| Cloud access or initial signed-key enrollment | A Tesla account with access to the site. Normal local reads do not require cloud credentials. |
+| Cloud-mode refresh token | Required for cloud monitoring or optional cloud history. Obtained using the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) login tool — see [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below |
 
 ---
 
@@ -123,28 +126,39 @@ NuGet package availability: this driver is also published as the `CrestronHomeDr
 
 Crestron Home Driver NuGet Publishing Standard v1 is **not** an official Crestron product or specification. It is an open source packaging standard created to facilitate community distribution and discovery of Crestron Home drivers through NuGet.
 
-1. Download the generated `.pkg` asset from the GitHub Release, or build it yourself using the instructions in [Building from Source](#building-from-source).
-2. Upload the `.pkg` file to your Crestron Home processor manually (for example via SFTP to `/user/ThirdPartyDrivers/Import`).
-3. In the Crestron Home configuration UI, add a new device and select the **Tesla Powerwall** driver.
-4. Configure the driver using the values below.
+1. Download `TeslaPowerwallCrestronDriver.pkg` from the release assets, or extract it from the NuGet package.
+2. Connect to the processor using SFTP and your processor credentials. Upload the `.pkg` to `/user/ThirdPartyDrivers/Import` and allow the import to finish.
+3. Open **Crestron Home Setup**, connect to the processor, and open **Pair Devices**. Select **Tesla Powerwall** under manufacturer **Tesla**, category **Energy Automation**.
+4. Select the connection method and enter its configuration below. For signed local access, complete [local provisioning](TeslaPowerwallCrestronDriver.LocalSetup/README.md) first.
+5. Save the configuration and assign the driver to a room. Its tile appears on the **Home screen**, not the room screen.
+6. Open Home on a touch panel or app. Confirm that the tile is online and opens the live power page.
+
+For an existing installation, importing a newer package does not update the installed instance automatically. Apply the available driver update in Setup, then verify version **1.2.000.0000**, the retained connection settings and room assignment.
 
 ### Configuration
 
 | Field | Description |
 |---|---|
 | Tesla Fleet API Client ID | Optional. Leave blank to use the Tesla Owner API. Set to a Tesla Fleet API application Client ID to use the Tesla Fleet API instead — when set, the refresh token below must be a Fleet API refresh token, and Storm Watch is unavailable. |
-| Tesla Refresh Token | Required. OAuth refresh token for the Tesla account — an Owner API refresh token if Client ID above is blank, or a Fleet API refresh token if it is set. See [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below. |
-| Tesla Energy Site ID | Optional. Numeric Tesla energy site ID, or the site's name exactly as shown in the Tesla app/account. Leave blank to use the account's first/default energy site. |
-| Refresh Interval Seconds | How often the driver refreshes Powerwall status and power data from Tesla. 30-3600 seconds; default 60. |
+| Tesla Refresh Token | Required for Cloud or explicitly enabled cloud history; otherwise unused. OAuth refresh token for the Tesla account — an Owner API refresh token if Client ID above is blank, or a Fleet API refresh token if it is set. See [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below. |
+| Tesla Energy Site ID | In Cloud mode: numeric ID or exact site name; blank selects the account's default site. For cloud history with local access: required exact numeric ID of the same physical site. |
+| Cloud Refresh Interval Seconds | Delay after completed cloud reads, or between optional history refreshes in local mode. 30–3600 seconds; default 60. |
+| Connection | Cloud (existing default), Gateway, Setup Wi-Fi, or Signed LAN. |
+| Local Hostname or IP Address | Required for local access. Hostnames are retained for DNS resolution; an optional HTTPS port is accepted. |
+| Local Password | Local customer password for Gateway/Signed LAN; full equipment-label password for Setup Wi-Fi. Masked and persistent. |
+| Registered Local Signing Key | Signed LAN only: the registered RSA-4096 private key exported by the independent provisioning tool. Masked and persistent. |
+| Allow Local Setting Changes | Default false. Enables supported controls for Gateway/Signed LAN; Setup Wi-Fi remains read-only. |
+| Local Polling Interval Seconds | 15–3600 seconds; default 15. The same interval governs the local response cache. Slow responses extend the gap; requests do not overlap. |
+| Use Cloud History with Local Access | Default false. Requires cloud credentials and the numeric ID of this exact site. Local-only monitoring never contacts the cloud. |
 
 ⚠️ **Changing the Client ID invalidates the cached refresh token.** Owner API and Fleet API refresh tokens are not interchangeable, and Fleet API refresh tokens are themselves scoped to the application (Client ID) that requested them. Adding, removing, or changing the Client ID therefore requires entering a new, matching refresh token in the same configuration update — the driver will reject the update with a validation error on the Tesla Refresh Token field if one isn't supplied.
 
 ### Obtaining a Tesla Refresh Token
 
-This driver needs an OAuth refresh token for your Tesla account before it can connect, regardless of mode. Tesla's login flow requires an interactive browser sign-in, which isn't something a Crestron Home driver can perform on its own, so token retrieval is handled by a companion tool from the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository:
+Cloud monitoring and optional cloud history require an OAuth refresh token. Local monitoring uses its own credentials; signed-key enrollment is a separate provisioning step. Tesla's login flow requires an interactive browser sign-in, which isn't something a Crestron Home driver can perform on its own, so token retrieval is handled by a companion tool from the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository:
 
 1. Go to the [TeslaPowerwallLibrary releases](https://github.com/oznetmaster/TeslaPowerwallLibrary/releases) page and download `TeslaPowerwallSetup-net10.0-windows.zip`.
-2. Run the tool and sign in with your Tesla account credentials in the interactive login window. For Fleet API mode, supply your application's Client ID, Client Secret and registered redirect URI, select its region, then complete authorization in the embedded Tesla sign-in window; callback capture and token exchange are automatic. Initial partner registration also requires the registered domain and hosted public key. The Setup app supplied with library 1.2.5 offers **Sign in to Tesla** to skip registration for an existing application, and can remember application settings encrypted for your Windows account.
+2. Run the tool and sign in with your Tesla account credentials in the interactive login window. For Fleet API mode, supply your application's Client ID, Client Secret and registered redirect URI, select its region, then complete authorization in the embedded Tesla sign-in window; callback capture and token exchange are automatic. Initial partner registration also requires the registered domain and hosted public key. The Setup app offers **Sign in to Tesla** to skip registration for an existing application, and can remember application settings encrypted for your Windows account.
 3. Copy the resulting refresh token shown by the tool.
 4. Paste it into the **Tesla Refresh Token** field when configuring this driver in Crestron Home (and, for Fleet API mode, paste the Client ID into the **Tesla Fleet API Client ID** field).
 
@@ -164,7 +178,7 @@ Tesla may periodically rotate the refresh token; this driver automatically persi
 - `.NET Framework 4.7.2`
 - [ILRepack](https://github.com/gluck/il-repack) via `ILRepackMerge.ps1`
 - `PatchMergedAssembly.ps1` to rewrite merged assemblies for Crestron Home runtime compatibility
-- `ManifestUtil.exe` from the Crestron Driver SDK to produce the final `.pkg`
+- `ManifestUtil.exe` from the Crestron.DeviceDrivers.ManifestUtil 29.0.10 NuGet package to produce the final `.pkg`
 
 ### Build
 
@@ -183,7 +197,7 @@ The build pipeline:
 
 This repository includes a GitHub Actions workflow that builds the Release package and attaches the generated `.pkg` to a GitHub Release.
 
-The same release workflow also publishes the `TeslaPowerwallCrestronDriver` NuGet package, which wraps the final generated `.pkg` artifact.
+The same release workflow also publishes the `CrestronHomeDriver.Tesla.Powerwall` NuGet package, which wraps the final generated `.pkg` artifact.
 
 Typical release flow:
 1. Push the release commit and tag
@@ -216,7 +230,7 @@ Tesla and Powerwall are trademarks of Tesla, Inc.
 
 ## Automated tests
 
-The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 5 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 53 offline tests exercise driver logic without credentials or real device commands. The 20 processor lifecycle cases are excluded on Windows in this project; the dedicated desktop SDK harness exercises the same fixture sources.
+The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 5 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 84 offline unit cases exercise driver logic without credentials or real device commands. The 29 processor lifecycle cases are skipped by the net472 Windows run; the desktop SDK harness executes them alongside 11 Windows provisioning cases. See the [test guide](TeslaPowerwallCrestronDriver.Tests/README.md) and [Android UI tests](TeslaPowerwallCrestronDriver.AndroidTests/README.md).
 
 ```powershell
 dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -c Release
@@ -231,7 +245,7 @@ Cover Owner/Fleet token callbacks from current and replaced clients, and delayed
 
 Changing authentication mode or Fleet application requires a fresh token; rejected edits preserve active configuration; refresh interval boundaries are validated; clearing configuration removes active and pending credentials and resets availability.
 
-The current package contains **53 offline tests**, **20 SDK entity/lifecycle tests**, and **3 optional live site tests**. The processor package remains **net472 only**, appears under **Utility** in Configure, and can run independently through its own tile or the Windows NUnit runner. The offline and lifecycle fixtures use synthetic data. The optional Live Site suite exercises real driver polling and state publication against the selected Tesla energy site, without sending control commands.
+The current source includes offline, SDK lifecycle and optional live API/UI-binding tests; see the [test matrix](TeslaPowerwallCrestronDriver.Tests/README.md). The processor package remains **net472 only**, appears under **Utility** in Configure, and can run independently through its own tile or the Windows NUnit runner. The offline and lifecycle fixtures use synthetic data. The optional Live Site suite exercises real driver polling and state publication against the selected Tesla energy site, without sending control commands.
 
 `TeslaPowerwallCrestronDriver.Lifecycle.Tests` runs the entity checks against the real desktop SDK on .NET 10. It compiles the relevant driver sources and shares fixture sources with the net472 processor tests. Building this project does not deploy a driver. A locally supplied `Newtonsoft.Json.Compact.dll` is needed by the SDK's manifest reader; it is supplied by the processor at runtime and must not be added to source control or bundled with the processor test package.
 
@@ -267,7 +281,7 @@ Local build/deployment overrides can be created by copying [TeslaPowerwallCrestr
 
 ### Optional live site tests
 
-Use a separately issued test credential; each installed driver keeps its existing credentials and independent rotation. Do not copy one driver's refresh token into the tests. Owner API (`cloud`) and Fleet API (`fleet`) use separate test profiles. Local gateway tests will follow the local driver implementation; they are not available yet.
+Use a separately issued test credential; each installed driver keeps its existing credentials and independent rotation. Do not copy one driver's refresh token into the tests. Owner API (`cloud`) and Fleet API (`fleet`) use separate test profiles. Local tests accept the same portable `LiveTestSettings.json` on Windows and the processor, including the local endpoint, password and registered signing key. See the [local provisioning guide](TeslaPowerwallCrestronDriver.LocalSetup/README.md).
 
 The library's [test credential helper](https://github.com/oznetmaster/TeslaPowerwallLibrary/blob/HEAD/TeslaPowerwallLibrary.TestCredentials/README.md) accepts the initial refresh token and, for Fleet, the client ID. It maintains subsequent tokens in an encrypted Windows store and holds exclusive ownership while tests run. The helper is included with library 1.2.5; these live fixtures are included with driver 1.1.6. Dedicated Owner authentication passed all three live tests on Windows and the processor. The complete gated workflow also passed 73 local tests, 73 processor tests and three installed-driver health checks after updating the actual driver. Dedicated Fleet read-only tests have also passed on Windows and the processor.
 
@@ -290,10 +304,6 @@ The publish/release workflows support an explicit manual override when the proce
 GitHub-hosted validation remains mandatory for the checked-out source, and the normal build, tests and packaging steps still run. Wait for the configured hosted workflows to pass, or run them on the same source revision first. None of these hosted checks needs the local runner or processor. Automatic tag/release-triggered runs retain the normal hardware checks; use a manual invocation of the updated release workflow when an offline override is needed.
 ## NUnit 5 test tooling
 
-All maintained NUnit suites use the official NUnit 5.0.0 framework. Async exception assertions are awaited, and discarded-task warnings fail test builds. Processor test packages use CrestronHomeNUnit SDK 2.2.0; workflow and Android suites, where provided, use the released 2.2.0 adapter. Tests remain available in Visual Studio, VS Code and the command line. Live and manual tests still require their documented devices and permissions. This is a test-tooling update; the published product version and runtime behavior are unchanged.
+All maintained suites use NUnit 5.0.0 and NUnit3TestAdapter 6.3.0. Workflow and Android tests use CrestronHomeNUnit.TestAdapter 2.3.0; processor packages use the pinned public SDK 2.3.0 source. See the [test dependency and live-input guide](TeslaPowerwallCrestronDriver.Tests/README.md).
 
-## NUnit 5 test package
-
-Test package **1.1.0** uses **NUnit 5.0.0**. It is independent of the product version. [Download package](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/download/v1.1.8/TeslaPowerwallCrestronDriver.ProcessorTests-1.1.0.pkg), [documentation](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/download/v1.1.8/TeslaPowerwallCrestronDriver.ProcessorTests-1.1.0-Documentation.zip), [validation](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/download/v1.1.8/TeslaPowerwallCrestronDriver.ProcessorTests-1.1.0.validation.json), [exact source revisions](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/download/v1.1.8/TeslaPowerwallCrestronDriver.ProcessorTests-1.1.0.sources.json), and [SHA-256 checksums](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/download/v1.1.8/TeslaPowerwallCrestronDriver.ProcessorTests-1.1.0-SHA256SUMS.txt) are attached to the existing product release. No product binary or NuGet version changed for this test update.
-
-Validated on 1 October 2026: 61 offline cases passed in each of two runs from the packaged assembly on Windows. Processor-only lifecycle fixtures are skipped on Windows and are not included in that pass count. All suite identities were checked against source discovery. Live/manual tests and execution on the processor were not repeated during this migration; earlier hardware results do not certify this new package.
+The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 84 unit and 29 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.

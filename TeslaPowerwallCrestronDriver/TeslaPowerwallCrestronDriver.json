@@ -20,11 +20,89 @@
       "Website": "",
       "PhoneNumber": ""
     },
-    "DriverVersion": "1.1.008.0000",
-    "VersionDate": "2026-09-22 08:00:00.000"
+    "DriverVersion": "1.2.000.0000",
+    "VersionDate": "2026-10-08 20:00:00.000"
   },
   "ConfigurationSteps": {
     "Items": [
+      {
+        "Id": "ConnectionMode",
+        "Title": "Connection",
+        "Description": "Cloud preserves Owner/Fleet access. Gateway uses the customer HTTPS API. Setup Wi-Fi uses equipment-label TEDAPI. Signed LAN uses a separately registered driver key.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "String",
+        "DefaultValue": "Cloud",
+        "AvailableValues": [
+          "Cloud",
+          "Gateway",
+          "Setup Wi-Fi",
+          "Signed LAN"
+        ]
+      },
+      {
+        "Id": "UseCloudHistory",
+        "Title": "Use Cloud History with Local Access",
+        "Description": "Optional. Enable only with separate Owner/Fleet credentials and the numeric site ID belonging to this local system. Disabled means no cloud activity from a local driver.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "String",
+        "DefaultValue": "false",
+        "AvailableValues": [
+          "false",
+          "true"
+        ]
+      },
+      {
+        "Id": "LocalHost",
+        "Title": "Local Hostname or IP Address",
+        "Description": "Required for local access. A DNS hostname follows DHCP address changes. Optional HTTPS port; omit https://.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "String"
+      },
+      {
+        "Id": "LocalPassword",
+        "Title": "Local Password",
+        "Description": "Gateway and Signed LAN: local customer password. Setup Wi-Fi: full equipment-label password. This is not your Tesla account password.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "String",
+        "Masked": true
+      },
+      {
+        "Id": "LocalSigningKey",
+        "Title": "Registered Local Signing Key",
+        "Description": "Signed LAN only. Paste the private key from the driver local setup tool after registration and physical verification. Keep this credential private.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "String",
+        "Masked": true
+      },
+      {
+        "Id": "AllowLocalControl",
+        "Title": "Allow Local Setting Changes",
+        "Description": "Local access is read-only by default. True permits the existing reserve, mode and supported grid settings. Setup Wi-Fi remains read-only.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "String",
+        "DefaultValue": "false",
+        "AvailableValues": [
+          "false",
+          "true"
+        ]
+      },
+      {
+        "Id": "LocalRefreshIntervalSeconds",
+        "Title": "Local Polling Interval Seconds",
+        "Description": "Delay after each completed local refresh. Defaults to 15 seconds. Requests do not overlap; slow requests extend the time between updates.",
+        "Required": false,
+        "Persistent": true,
+        "ValueType": "Number",
+        "DefaultValue": "15",
+        "MinValue": 15,
+        "MaxValue": 3600
+      },
       {
         "Id": "ClientId",
         "Title": "Tesla Fleet API Client ID",
@@ -36,8 +114,8 @@
       {
         "Id": "RefreshToken",
         "Title": "Tesla Refresh Token",
-        "Description": "OAuth refresh token for the Tesla account, obtained using an external setup tool. This is an Owner API refresh token unless a Client ID is also provided above, in which case it must be a Fleet API refresh token. The library automatically obtains and renews the access token from this refresh token on every connection; the driver updates this value here if Tesla rotates it. Note: changing the Client ID above invalidates this cached value, so a matching new refresh token must be entered whenever the Client ID is added, removed, or changed.",
-        "Required": true,
+        "Description": "OAuth refresh token for the Tesla account, obtained using an external setup tool. This is an Owner API refresh token unless a Client ID is also provided above, in which case it must be a Fleet API refresh token. The library automatically obtains and renews the access token from this refresh token on every connection; the driver updates this value here if Tesla rotates it. Note: changing the Client ID above invalidates this cached value, so a matching new refresh token must be entered whenever the Client ID is added, removed, or changed. Optional when local access is selected; leave blank for no cloud activity.",
+        "Required": false,
         "Persistent": true,
         "Masked": true,
         "ValueType": "String"
@@ -45,15 +123,15 @@
       {
         "Id": "SiteId",
         "Title": "Tesla Energy Site ID",
-        "Description": "Optional. Enter the numeric Tesla energy site ID, or the site's name exactly as shown in the Tesla app/account (the driver looks up the matching ID automatically). Leave blank to use the account's first/default energy site.",
+        "Description": "Optional. Enter the numeric Tesla energy site ID, or the site's name exactly as shown in the Tesla app/account (the driver looks up the matching ID automatically). Leave blank to use the account's first/default energy site. With local access and optional cloud history, the numeric ID for this exact physical site is required; no default-site selection is made.",
         "Required": false,
         "Persistent": true,
         "ValueType": "String"
       },
       {
         "Id": "RefreshIntervalSeconds",
-        "Title": "Refresh Interval Seconds",
-        "Description": "How often the driver refreshes Powerwall status and power data from the Tesla cloud.",
+        "Title": "Cloud Refresh Interval Seconds",
+        "Description": "Delay after a completed cloud refresh. With local access, this applies only to optional cloud history; local status uses its separate interval.",
         "Required": false,
         "MinValue": 30,
         "MaxValue": 3600,
@@ -66,10 +144,17 @@
       {
         "StepId": "CloudAccountConfiguration",
         "Items": [
+          "ConnectionMode",
+          "UseCloudHistory",
           "ClientId",
           "RefreshToken",
           "SiteId",
-          "RefreshIntervalSeconds"
+          "RefreshIntervalSeconds",
+          "LocalHost",
+          "LocalPassword",
+          "LocalSigningKey",
+          "AllowLocalControl",
+          "LocalRefreshIntervalSeconds"
         ],
         "NextStep": null
       }

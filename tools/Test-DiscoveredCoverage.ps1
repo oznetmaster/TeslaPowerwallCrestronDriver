@@ -39,7 +39,7 @@ function Read-TestTree([string]$Path, [switch]$AdapterDump) {
     if (!$cases.Count) { throw "Empty suite in $Path" }
     foreach ($case in $cases) {
         $categories = @($case.SelectNodes("ancestor-or-self::*/properties/property[@name='Category']") | ForEach-Object { $_.GetAttribute('value') })
-        [pscustomobject]@{ Name=$case.GetAttribute('fullname'); Live=('Live' -in $categories); Processor=('Processor' -in $categories); Result=$case.GetAttribute('result'); Label=$case.GetAttribute('label'); Reason=$case.SelectSingleNode('reason/message') }
+        [pscustomobject]@{ Name=$case.GetAttribute('fullname'); Live=('Live' -in $categories); Processor=('Processor' -in $categories); LocalLive=('LocalLive' -in $categories); Result=$case.GetAttribute('result'); Label=$case.GetAttribute('label'); Reason=$case.SelectSingleNode('reason/message') }
     }
 }
 function Assert-TestOutcome($Case, [bool]$AllowSkip) {
@@ -49,6 +49,19 @@ function Assert-TestOutcome($Case, [bool]$AllowSkip) {
         $Case.Reason.InnerText.Contains('Requires the SDK desktop harness or processor runtime.') -or
         $Case.Reason.InnerText.Contains('Requires the Crestron processor runtime; run the Processor Lifecycle suite on the processor.'))) { return }
     throw "Unexpected result for $($Case.Name): $($Case.Result)"
+}
+
+function Get-SuiteTests($Inventory, [string]$Suite) {
+    if ($Suite -notin @('unit','lifecycle','live','local-live')) { throw 'Unknown processor suite.' }
+    return @($Inventory | Where-Object {
+        $candidate = $_
+        switch ($Suite) {
+            'unit' { !$candidate.Live -and !$candidate.Processor }
+            'lifecycle' { !$candidate.Live -and $candidate.Processor }
+            'live' { $candidate.Live -and !$candidate.LocalLive }
+            'local-live' { $candidate.Live }
+        }
+    } | ForEach-Object Name)
 }
 
 if ($MyInvocation.InvocationName -eq '.') { return }
@@ -90,7 +103,7 @@ if ($Stage -eq 'Desktop') {
         $observed += $identity
     }
     Assert-SameTests @($inventory | Where-Object { !$_.Live } | ForEach-Object Name) $observed 'Desktop execution'
-    $inventory | Select-Object Name,Live,Processor | ConvertTo-Json -Depth 4 | Set-Content "$evidence/inventory.json" -Encoding utf8
+    $inventory | Select-Object Name,Live,Processor,LocalLive | ConvertTo-Json -Depth 4 | Set-Content "$evidence/inventory.json" -Encoding utf8
     Write-Host "Verified $($observed.Count) test results against discovery; $(@($inventory | Where-Object Live).Count) live tests discovered only."
 } elseif ($Stage -eq 'Package') {
     $inventory = @(Get-Content $SourceInventory -Raw | ConvertFrom-Json)
@@ -99,10 +112,10 @@ if ($Stage -eq 'Desktop') {
     & $validator $PackageAssembly "$validation/discovery" 0
     if ($LASTEXITCODE) { throw 'Package discovery failed.' }
     $trees = @(Get-ChildItem "$validation/discovery" -Recurse -Filter TestTree.xml)
-    $suites = @('unit','lifecycle','live')
+    $suites = @('unit','lifecycle','live','local-live')
     Assert-SameTests $suites @($trees | ForEach-Object { $_.Directory.Name }) 'Package suites'
     foreach ($tree in $trees) {
-        $expected = @($inventory | Where-Object { $candidate = $_; switch ($tree.Directory.Name) { 'unit' { !$candidate.Live -and !$candidate.Processor } 'lifecycle' { !$candidate.Live -and $candidate.Processor } 'live' { $candidate.Live } } } | ForEach-Object Name)
+        $expected = @(Get-SuiteTests $inventory $tree.Directory.Name)
         Assert-SameTests $expected @((Read-TestTree $tree.FullName).Name) "Packaged $($tree.Directory.Name) discovery"
     }
     & $validator $PackageAssembly "$validation/execution" 0 --run-twice

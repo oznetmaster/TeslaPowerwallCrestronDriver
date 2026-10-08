@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: oznetmaster/CrestronHomeNUnit
-          ref: ce916780ebafc78306fff11e614f3eef20ca2092
+          ref: 26694de80a966a362d7afe661d64399b395ff194
           path: CrestronHomeNUnit
       - uses: actions/setup-dotnet@v4
         with:
@@ -30,7 +30,7 @@ jobs:
             8.0.x
       - uses: NuGet/setup-nuget@v2
       - name: Install processor packaging tools
-        run: ../CrestronHomeNUnit/tools/InstallCiTools.ps1
+        run: ./tools/InstallCiTools.ps1
       - name: Verify discovery coverage guards
         run: ./tools/Test-DiscoveredCoverageGuards.ps1
       - name: Run NUnit driver tests
@@ -58,14 +58,14 @@ jobs:
           ./tools/Test-DiscoveredCoverage.ps1 -Stage Desktop -Project TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj -Framework net10.0 -ResultsDirectory TestResults
       - name: Build processor package
         run: |
-          dotnet build TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests.csproj -c Release -p:BuildProcessorTestPackages=true -p:ReleaseVersion=1.1.0 -p:DeployAfterBuild=false "-p:ManifestUtilExe=$env:MANIFEST_UTIL_EXE"
+          dotnet build TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests.csproj -c Release -p:BuildProcessorTestPackages=true -p:ReleaseVersion=1.2.0 -p:DeployAfterBuild=false "-p:ManifestUtilExe=$env:MANIFEST_UTIL_EXE"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run the packaged unit suite twice
         run: |
           $output = Join-Path $PWD 'TeslaPowerwallCrestronDriver.ProcessorTests/bin/Release/net472'
           $extracted = Join-Path $env:RUNNER_TEMP 'driver-package-tests'
           [IO.Compression.ZipFile]::ExtractToDirectory((Join-Path $output 'TeslaPowerwallCrestronDriver.ProcessorTests.pkg'), $extracted)
-          ./tools/Test-DiscoveredCoverage.ps1 -Stage Package -SdkRoot ../CrestronHomeNUnit -PackageAssembly (Join-Path $extracted 'TeslaPowerwallCrestronDriver.ProcessorTests.dll') -SourceInventory TestResults/TeslaPowerwallCrestronDriver.Lifecycle.Tests/inventory.json -ResultsDirectory TestResults
+          ./tools/Test-DiscoveredCoverage.ps1 -Stage Package -SdkRoot ../CrestronHomeNUnit -PackageAssembly (Join-Path $extracted 'TeslaPowerwallCrestronDriver.ProcessorTests.dll') -SourceInventory TestResults/TeslaPowerwallCrestronDriver.Tests/inventory.json -ResultsDirectory TestResults
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         if: always()

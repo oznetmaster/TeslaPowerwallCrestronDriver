@@ -4,4 +4,6 @@
   <Project Path="TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj" />
   <Project Path="TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests.csproj" />
   <Project Path="TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj" />
+  <Project Path="TeslaPowerwallCrestronDriver.LocalSetup/TeslaPowerwallCrestronDriver.LocalSetup.csproj" />
+  <Project Path="TeslaPowerwallCrestronDriver.AndroidTests/TeslaPowerwallCrestronDriver.AndroidTests.csproj" />
 </Solution>

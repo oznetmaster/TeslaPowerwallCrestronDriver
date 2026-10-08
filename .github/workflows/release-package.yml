@@ -26,7 +26,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     runs-on: windows-latest
     env:
-      MANIFESTUTIL_VERSION: 27.0.24
+      MANIFESTUTIL_VERSION: 29.0.10
       OFFICE_CORE_VERSION: 12.0.0
       WORD_INTEROP_VERSION: 15.0.4797.1004
       NET472_REFERENCE_ASSEMBLIES: C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.7.2
@@ -49,7 +49,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: oznetmaster/CrestronHomeNUnit
-          ref: ce916780ebafc78306fff11e614f3eef20ca2092
+          ref: 26694de80a966a362d7afe661d64399b395ff194
           path: .processor-sdk
 
       - name: Set up .NET SDK
@@ -193,6 +193,9 @@ jobs:
           Copy-Item README.md,CHANGELOG.md,LICENSE -Destination $docs
           $tests = 'TeslaPowerwallCrestronDriver.ProcessorTests'
           Copy-Item "$tests/RELEASE-NOTES.md","$tests/THIRD-PARTY-NOTICES.md" -Destination $docs
+          Copy-Item "$tests/README.md" -Destination "$docs/PROCESSOR-TESTS.md"
+          Copy-Item "TeslaPowerwallCrestronDriver.Tests/README.md" -Destination "$docs/LIVE-TESTS.md"
+          Copy-Item "TeslaPowerwallCrestronDriver.LocalSetup/README.md" -Destination "$docs/LOCAL-PROVISIONING.md"
           Copy-Item "$tests/licenses" -Destination $docs -Recurse
           Compress-Archive -Path "$docs/*" -DestinationPath "$tests/TeslaPowerwallCrestronDriver.ProcessorTests-Documentation.zip"
           @{
@@ -200,13 +203,26 @@ jobs:
             commit = '${{ github.sha }}'
             release = '${{ steps.package_version.outputs.tag }}'
             testHostRepository = 'oznetmaster/CrestronHomeNUnit'
-            testHostCommit = 'ce916780ebafc78306fff11e614f3eef20ca2092'
+            testHostCommit = '26694de80a966a362d7afe661d64399b395ff194'
           } | ConvertTo-Json | Set-Content "$tests/TeslaPowerwallCrestronDriver.ProcessorTests.sources.json"
           $assets = @("$tests/bin/Release/net472/TeslaPowerwallCrestronDriver.ProcessorTests.pkg", "$tests/TeslaPowerwallCrestronDriver.ProcessorTests-Documentation.zip", "$tests/TeslaPowerwallCrestronDriver.ProcessorTests.sources.json")
           $assets | ForEach-Object {
             $hash = Get-FileHash -LiteralPath $_ -Algorithm SHA256
             "$($hash.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_))"
           } | Set-Content "$tests/PROCESSOR-TESTS-SHA256SUMS.txt"
+
+      - name: Build independent local provisioning download
+        shell: pwsh
+        run: ./tools/Build-LocalSetupRelease.ps1 -OutputDirectory "$env:RUNNER_TEMP/local-provisioning-release"
+
+      - name: Record product checksums
+        shell: pwsh
+        run: |
+          $assets = @('${{ steps.package.outputs.pkg_path }}', "$env:RUNNER_TEMP/local-provisioning-release/TeslaPowerwallLocalSetup-win-x64.zip")
+          $assets | ForEach-Object {
+            $hash = Get-FileHash -LiteralPath $_ -Algorithm SHA256
+            "$($hash.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($_))"
+          } | Set-Content "$env:RUNNER_TEMP/PRODUCT-SHA256SUMS.txt"
 
       - name: Pack NuGet package
         shell: pwsh
@@ -272,6 +288,8 @@ jobs:
           tag_name: ${{ github.event.release.tag_name || github.ref_name }}
           files: |
             ${{ steps.package.outputs.pkg_path }}
+            ${{ runner.temp }}/local-provisioning-release/TeslaPowerwallLocalSetup-win-x64.zip
+            ${{ runner.temp }}/PRODUCT-SHA256SUMS.txt
             TeslaPowerwallCrestronDriver.ProcessorTests/bin/Release/net472/TeslaPowerwallCrestronDriver.ProcessorTests.pkg
             TeslaPowerwallCrestronDriver.ProcessorTests/*-Documentation.zip
             TeslaPowerwallCrestronDriver.ProcessorTests/*.sources.json

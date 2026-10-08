@@ -10,8 +10,8 @@
 				<statusandnavigation id="GridStatusRow" label="^GridLabel" status="{gridPowerDisplay}" statusicon="#icQuickAction" />
 				<statusandnavigation id="PowerwallStatusRow" label="^PowerwallLabel" status="{batteryLevelDisplay}" statusicon="#icBatteryLow" />
 				<textdisplay id="StatusDisplay" title="^StatusTitle" line1label="{statusSummary}" line2label="{operationModeDisplay}" line3label="{gridExportModeDisplay}" />
-				<statusandnavigation id="EnergyStatusRow" label="^EnergyButtonLabel" status="{energyValueDisplay}" navigation="show:EnergyPage" />
-				<statusandnavigation id="ImpactStatusRow" label="^ImpactButtonLabel" status="{impactSummaryDisplay}" statusicon="#icInfo" navigation="show:ImpactPage" />
+				<statusandnavigation id="EnergyStatusRow" visible="{historyVisible}" label="^EnergyButtonLabel" status="{energyValueDisplay}" navigation="show:EnergyPage" />
+				<statusandnavigation id="ImpactStatusRow" visible="{historyVisible}" label="^ImpactButtonLabel" status="{impactSummaryDisplay}" statusicon="#icInfo" navigation="show:ImpactPage" />
 				<button id="OpenSettingsButton" label="^SettingsButtonLabel" navigation="show:SettingsPage" />
 			</controls>
 		</layout>
@@ -66,11 +66,12 @@
 		</layout>
 		<layout id="SettingsPage" title="^SettingsPageTitle" subtitle="{siteNameDisplay}">
 			<controls>
-				<raiselowerwithtext id="BackupReserveControl" label="^BackupReserveLabel" value="{backupReservePercent}" valueformat="{backupReserveValueFormat}" />
-				<toggle id="GridChargingToggle" label="^GridChargingLabel" value="{gridChargingEnabled}" />
-				<toggle id="StormWatchToggle" label="^StormWatchLabel" value="{stormWatchEnabled}" visible="{stormWatchVisible}" />
-				<selectorbutton id="OperationModeSelector" label="^OperationModeHeaderLabel" value="{operationMode}" />
-				<selectorbutton id="GridExportSelector" label="^GridExportHeaderLabel" value="{gridExportMode}" />
+				<raiselowerwithtext id="BackupReserveControl" visible="{operatingSettingsVisible}" enabled="{controlsEnabled}" label="^BackupReserveLabel" value="{backupReservePercent}" valueformat="{backupReserveValueFormat}" />
+				<toggle id="GridChargingToggle" visible="{gridSettingsVisible}" enabled="{controlsEnabled}" label="^GridChargingLabel" value="{gridChargingEnabled}" />
+				<toggle id="StormWatchToggle" enabled="{controlsEnabled}" label="^StormWatchLabel" value="{stormWatchEnabled}" visible="{stormWatchVisible}" />
+				<selectorbutton id="OperationModeSelector" visible="{operatingSettingsVisible}" enabled="{controlsEnabled}" label="^OperationModeHeaderLabel" value="{operationMode}" />
+				<selectorbutton id="GridExportSelector" visible="{gridSettingsVisible}" enabled="{controlsEnabled}" label="^GridExportHeaderLabel" value="{gridExportMode}" />
+				<textdisplay id="ConnectionDisplay" title="#Connection" line1label="{connectionDisplay}" />
 				<button id="RefreshNowButton" label="^RefreshNowButtonLabel" action="command:refreshNow" />
 			</controls>
 		</layout>

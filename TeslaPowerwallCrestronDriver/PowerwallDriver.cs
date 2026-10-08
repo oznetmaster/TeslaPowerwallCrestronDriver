@@ -27,7 +27,7 @@ using TeslaPowerwallLibrary.Models;
 namespace TeslaPowerwall.CrestronDriver;
 
 /// <summary>
-/// Root Crestron Home Entity V2 Tesla Powerwall driver. Connects to the Tesla Owners (cloud) API via
+/// Root Crestron Home Entity V2 Tesla Powerwall driver. Connects to a Tesla cloud API or an independent local endpoint via
 /// <see cref="TeslaPowerwallLibrary.Powerwall"/> to monitor and control a single Powerwall energy site.
 /// </summary>
 /// <remarks>
@@ -57,10 +57,22 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 	private readonly UiDefinitionProperty _uiDefinition;
 	private readonly object _syncLock = new ();
 	private readonly object _stateLock = new ();
+	private readonly SemaphoreSlim _connectionGate = new (1, 1);
 
 	private CancellationTokenSource _refreshCancellationTokenSource;
 	private int _refreshInProgress;
 	private TeslaPowerwallLibrary.Powerwall _client;
+	private TeslaPowerwallLibrary.Powerwall _historyClient;
+	private System.Security.Cryptography.RSA _localSigningKey;
+	private LocalConnectionSettings _local = new ();
+	private LocalConnectionSettings _pendingLocal = new ();
+	private DateTimeOffset _nextHistoryRefresh;
+	private string _lastHistorySelection = string.Empty;
+	private bool IsLocal => _local.IsLocal;
+	private int PollIntervalSeconds => IsLocal ? _local.IntervalSeconds : _refreshIntervalSeconds;
+	private bool CanControl => !IsLocal || (_local.AllowControl && _local.Connection != "Setup Wi-Fi");
+	private bool SupportsGridSettings => !IsLocal || _local.Protocol != PowerwallLocalProtocol.Gateway;
+	private bool HasHistory => !IsLocal || (_local.UseCloudHistory && !string.IsNullOrWhiteSpace (_refreshToken) && IsNumericSiteId (_siteId));
 	private string _siteName = string.Empty;
 
 	// The actual calendar date/time that currently defines the Energy/Impact period being displayed (not
@@ -153,6 +165,10 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		GridExportMode = "battery_ok";
 		StormWatchEnabled = false;
 		StormWatchVisible = true;
+		ControlsEnabled = true;
+		GridSettingsVisible = true;
+		HistoryVisible = true;
+		ConnectionDisplay = "Waiting for configuration";
 		EnergyPeriod = "day";
 		EnergyPeriodOffsetFormat = BuildPeriodOffsetText (HistoryPeriod.Day, _energyPeriodAnchorDate, isCurrentPeriod: true);
 		EnergyPeriodOffsetVisible = true;
@@ -179,6 +195,7 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		TryPublishUiDefinition ();
 		}
 
+	/// <summary>Gets the controller that persists installer settings and rotated tokens.</summary>
 	internal DataDrivenConfigurationController ConfigurationController
 		{
 		get;
@@ -199,6 +216,8 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		if (action == DataDrivenConfigurationController.ApplyConfigurationAction.ClearValues)
 			{
 			StopRefreshLoop ();
+			_local = new LocalConnectionSettings ();
+			_pendingLocal = new LocalConnectionSettings ();
 			_clientId = string.Empty;
 			_refreshToken = string.Empty;
 			_siteId = string.Empty;
@@ -244,11 +263,22 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		_pendingRefreshIntervalSeconds = refreshInterval;
 
 		var errors = new Dictionary<string, string> (StringComparer.OrdinalIgnoreCase);
-		if (string.IsNullOrWhiteSpace (refreshToken))
+		_pendingLocal = _pendingLocal.Merge (values, errors);
+		if ((!_pendingLocal.IsLocal || _pendingLocal.UseCloudHistory) && string.IsNullOrWhiteSpace (refreshToken))
 			{
 			errors["RefreshToken"] = clientIdChanged
 				? "The Client ID changed; the cached refresh token no longer applies. Enter a new refresh token for the new mode."
 				: "Tesla refresh token is required.";
+			}
+
+		if (_pendingLocal.IsLocal && _pendingLocal.UseCloudHistory && !IsNumericSiteId (siteId))
+			{
+			errors["SiteId"] = "For optional cloud history, enter the numeric site ID belonging to this local Powerwall. Disable cloud history for local-only access.";
+			}
+		if (GetString (values, "RefreshIntervalSeconds") is string rawInterval && !string.IsNullOrWhiteSpace (rawInterval) &&
+			!int.TryParse (rawInterval, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+			{
+			errors["RefreshIntervalSeconds"] = "Enter a whole number of seconds.";
 			}
 
 		if (refreshInterval < MINIMUM_REFRESH_INTERVAL_SECONDS || refreshInterval > MAXIMUM_REFRESH_INTERVAL_SECONDS)
@@ -261,16 +291,36 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 			return new ConfigurationItemErrors (errors, "Correct the configuration values and retry.");
 			}
 
+		StopRefreshLoop ();
+		_local = _pendingLocal;
+		_nextHistoryRefresh = DateTimeOffset.MinValue;
+		_lastHistorySelection = string.Empty;
+		_gridBackupActive = null;
+		_stormWatchActive = null;
+		_batteryReserveLowActive = null;
+		_batteryFullyChargedActive = null;
+		SetUnavailableState ("Connecting");
 		_clientId = clientId ?? string.Empty;
 		_refreshToken = refreshToken;
 		_siteId = siteId ?? string.Empty;
 		_refreshIntervalSeconds = refreshInterval;
 		_siteName = string.Empty;
 		SiteNameDisplay = "--";
-		StormWatchVisible = !IsFleetApi;
+		UpdateConnectionPresentation ();
 
 		StartRefreshLoop ();
 		return null;
+		}
+
+	private void UpdateConnectionPresentation ()
+		{
+		StormWatchVisible = !IsLocal && !IsFleetApi;
+		ControlsEnabled = CanControl;
+		GridSettingsVisible = SupportsGridSettings;
+		HistoryVisible = HasHistory;
+		ConnectionDisplay = IsLocal
+			? _local.Connection + " | " + _local.Host + " | " + _local.IntervalSeconds + " seconds"
+			: (IsFleetApi ? "Fleet" : "Owner") + " | " + _refreshIntervalSeconds + " seconds";
 		}
 
 	private static string GetString (IDictionary<string, DriverEntityValue?> values, string key)

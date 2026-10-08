@@ -1,16 +1,21 @@
-# TeslaPowerwallCrestronDriver 1.1.8
+# TeslaPowerwallCrestronDriver 1.2.0
 
-This patch release updates the driver to the published TeslaPowerwallLibrary 2.0.0 NuGet package.
+This minor release adds local Powerwall monitoring and configuration using the published TeslaPowerwallLibrary 2.1.0. Existing Owner and Fleet installations retain their cloud configuration and programmable interfaces.
 
-- Correct mode-only and reserve-only operation writes, including numeric zero reserve, through the updated library.
-- Route library diagnostics through the owning driver's Crestron logger, severity filters and scopes.
-- Package System.Text.Json and Microsoft logging dependencies in place of the library's Newtonsoft.Json and log4net dependencies.
-- Preserve existing configuration, programming commands, properties and UI.
+- Select Gateway or signed Powerwall 3 local access using an IP address or a hostname resolvable by the processor. Signed access works over Ethernet or normal home-network Wi-Fi.
+- Configure local polling from 15 to 3600 seconds, with a default of 15 seconds between completed polls. Cloud history has a separate interval.
+- Local connections start read-only. Explicitly enable supported setting changes when required; unavailable settings are hidden and missing readings remain unavailable.
+- Enable cloud history separately with its own credentials and the exact numeric ID of the local site. Local monitoring continues independently of cloud history.
+- Use the included Windows local provisioning tool to prepare and enroll an independent signing key. Normal local operation does not need that tool or a cloud connection.
+
+## Installation and upgrade
+
+Download `TeslaPowerwallCrestronDriver.pkg`, or use the `CrestronHomeDriver.Tesla.Powerwall` NuGet distribution through the Driver Feed Installer. Import the package, then apply the available update to an existing instance in Crestron Home Setup. Import alone does not update an installed instance. Confirm version **1.2.000.0000** and retained configuration. See the [installation and configuration guide](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver#installation).
+
+For new signed local connections, download `TeslaPowerwallLocalSetup-win-x64.zip` and follow its README. Existing cloud installations need no key enrollment. The Windows tool includes its runtime. Processor test assets are separate from the installable energy driver.
 
 ## Validation
 
-The driver was restored from NuGet into a fresh package cache, rebuilt and retested after library 2.0.0 became publicly available. All 81 offline cases passed in the desktop SDK harness. All 81 also passed twice on the development processor in each of the separate Owner and Fleet runs. All three live tests passed on desktop and processor with each API. Framework desktop validation passed 61 cases and intentionally skipped 20 lifecycle cases subsequently passed on the processor.
+Offline driver, configuration, provisioning and processor tests passed. Read-only live checks passed separately for Owner, Fleet, Gateway and signed LAN. Signed LAN was exercised on both test processors and both Windows test computers with portable credentials. Three Android NUnit checks passed against a separately installed read-only candidate, covering live readings, settings and saved connection details.
 
-Live checks are read-only and cover site selection, ready state, battery and operating-state publication, and refresh. Temporary test instances and package archives were removed and processor reservations released. No installed driver update or Powerwall setting change was performed during validation.
-
-The included processor test package contains 84 cases: 61 unit, 20 lifecycle and three manual live tests. Supply dedicated Owner and Fleet test sessions separately when running its live suite.
+Gateway telemetry is less complete than signed TEDAPI. Processor Gateway validation used an IP address; `.local` name resolution was not established. Temporary setup Wi-Fi and Mac UI acceptance are outside this release's live validation. No Powerwall control changes were made during driver acceptance.

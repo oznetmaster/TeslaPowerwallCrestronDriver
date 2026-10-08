@@ -52,6 +52,10 @@ public sealed partial class TeslaPowerwallDriver
 	[EntityCommandMetadata (Programmable = true)]
 	public void SetGridChargingEnabled ([EntityParameter] bool value)
 		{
+		if (!SupportsGridSettings)
+			{
+			return;
+			}
 		_ = Task.Run (() => ExecuteControlAsync (
 			client => client.SetGridChargingAsync (value),
 			() => GridChargingEnabled = value,
@@ -83,6 +87,10 @@ public sealed partial class TeslaPowerwallDriver
 	[EntityCommandMetadata (Programmable = true)]
 	public void SetGridExportMode ([EntityParameter] string value)
 		{
+		if (!SupportsGridSettings)
+			{
+			return;
+			}
 		if (string.IsNullOrWhiteSpace (value))
 			{
 			return;
@@ -103,9 +111,9 @@ public sealed partial class TeslaPowerwallDriver
 	[EntityCommandMetadata (Programmable = true)]
 	public void SetStormWatchEnabled ([EntityParameter] bool value)
 		{
-		if (IsFleetApi)
+		if (IsLocal || IsFleetApi)
 			{
-			LogWarning ("Storm Watch is not supported when connected via the Tesla Fleet API.");
+			LogWarning ("Storm Watch requires the Owner cloud connection.");
 			return;
 			}
 
@@ -260,30 +268,62 @@ public sealed partial class TeslaPowerwallDriver
 	// value, or failed outright.
 	private async Task ExecuteControlAsync (Func<TeslaPowerwallLibrary.Powerwall, Task> action, Action applyOptimisticUpdate, string description)
 		{
-		TeslaPowerwallLibrary.Powerwall client;
-		lock (_stateLock)
+		if (!CanControl)
 			{
-			client = _client;
-			}
-
-		if (client == null || !client.IsClientConnected)
-			{
-			LogWarning ("Cannot " + description + ": not connected.");
+			LogWarning ("Cannot " + description + ": local controls are disabled.");
 			return;
 			}
-
-		applyOptimisticUpdate ();
-
+		CancellationToken token;
+		lock (_syncLock)
+			{
+			if (_refreshCancellationTokenSource == null)
+				{
+				return;
+				}
+			token = _refreshCancellationTokenSource.Token;
+			}
 		try
 			{
-			await action (client).ConfigureAwait (false);
+			await _connectionGate.WaitAsync (token).ConfigureAwait (false);
+			try
+				{
+				TeslaPowerwallLibrary.Powerwall client;
+				lock (_stateLock)
+					{
+					token.ThrowIfCancellationRequested ();
+					client = _client;
+					if (!CanControl || client == null || !client.IsClientConnected)
+						{
+						return;
+						}
+					applyOptimisticUpdate ();
+					}
+				await action (client).ConfigureAwait (false);
+				EnsureCurrentClient (client, token);
+				}
+			finally
+				{
+				_connectionGate.Release ();
+				}
+			}
+		catch (OperationCanceledException)
+			{
+			return;
+			}
+		catch (Exception) when (token.IsCancellationRequested)
+			{
+			return;
 			}
 		catch (PowerwallException ex)
 			{
+			if (token.IsCancellationRequested)
+				{
+				return;
+				}
 			StatusSummary = "Command failed: " + ex.Message;
 			LogError ("Failed to " + description + ": " + ex.Message);
 			}
-		finally
+		if (!token.IsCancellationRequested)
 			{
 			await TriggerImmediateRefreshAsync ().ConfigureAwait (false);
 			}
@@ -294,7 +334,11 @@ public sealed partial class TeslaPowerwallDriver
 		CancellationToken token;
 		lock (_syncLock)
 			{
-			token = _refreshCancellationTokenSource?.Token ?? CancellationToken.None;
+			if (_refreshCancellationTokenSource == null)
+				{
+				return;
+				}
+			token = _refreshCancellationTokenSource.Token;
 			}
 
 		if (token.IsCancellationRequested)

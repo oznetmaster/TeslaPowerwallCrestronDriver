@@ -1,3 +1,11 @@
+# Test package 1.2.0
+
+- Validate the local connection update with 84 unit and 29 processor lifecycle cases.
+- Add the explicitly selected six-case local live/UI-binding suite alongside the three common Owner/Fleet checks.
+- Share the portable local credential format between Windows and processor tests. No live test enrolls keys or changes Powerwall settings.
+- Build with NUnit 5.0.0, the public CrestronHomeNUnit SDK 2.3.0 and NuGet ManifestUtil 29.0.10.
+- Windows provisioning and rendered Android UI checks run in their separate projects and are not included in the processor assembly.
+
 # Test package 1.1.0 - NUnit 5
 
 Independent test-tooling update: NUnit 5.0.0, CrestronHomeNUnit SDK 2.2.0, awaited asynchronous assertions, and compiler enforcement of discarded tasks. Production driver version and behavior are unchanged. Offline, processor, and manual/live evidence are recorded separately.

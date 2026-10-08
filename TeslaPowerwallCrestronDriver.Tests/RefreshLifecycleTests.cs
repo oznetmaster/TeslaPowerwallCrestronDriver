@@ -93,6 +93,69 @@ public sealed class RefreshLifecycleTests
 		Assert.That (_driver.ReadyIndicatorIsReady, Is.False);
 		Assert.That (_transport.Reads, Is.EqualTo (1), "Superseded polling must not continue issuing reads.");
 		}
+	/// <summary>Checks that timer and user refreshes cannot overlap network reads.</summary>
+	[Test]
+	public async Task ConcurrentRefreshIsSkipped ()
+		{
+		var first = (Task)Call ("RunPollAsync", CancellationToken.None);
+		try
+			{
+			await TestSupport.Complete (_transport.Entered.Task);
+			await TestSupport.Complete ((Task)Call ("RunPollAsync", CancellationToken.None));
+			Assert.That (_transport.Reads, Is.EqualTo (1));
+			Clear ();
+			}
+		finally
+			{
+			_transport.Release.TrySetResult (true);
+			}
+		try
+			{
+			await TestSupport.Complete (first);
+			}
+		catch (OperationCanceledException)
+			{
+			}
+		Assert.That (Field ("_refreshInProgress"), Is.EqualTo (0));
+		}
+
+	/// <summary>Checks that a local-only connection never requests cloud history.</summary>
+	[Test]
+	public async Task LocalWithoutCloudCredentialsDoesNotReadHistory ()
+		{
+		var errors = new Dictionary<string, string> ();
+		var settings = new LocalConnectionSettings ().Merge (new Dictionary<string, Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue?>
+			{ ["ConnectionMode"] = new Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue ("Gateway") }, errors);
+		Set ("_local", settings);
+		await (Task)Call ("RefreshHistoryIfDueAsync", _client, CancellationToken.None);
+		Assert.That (_transport.Reads, Is.Zero);
+		Assert.That (Field ("_historyClient"), Is.Null);
+		}
+
+	/// <summary>Checks that unchanged history is not read at every local refresh.</summary>
+	[Test]
+	public async Task HistoryCadenceSkipsUnchangedSelection ()
+		{
+		Set ("_lastHistorySelection", (string)Call ("HistorySelection"));
+		Set ("_nextHistoryRefresh", DateTimeOffset.UtcNow.AddMinutes (5));
+		await (Task)Call ("RefreshHistoryIfDueAsync", _client, CancellationToken.None);
+		Assert.That (_transport.Reads, Is.Zero);
+		}
+
+	/// <summary>Hides missing reserve and mode instead of showing constructor defaults or stale settings.</summary>
+	[Test]
+	public void MissingOperatingSettingsHideControlsUntilReportedAgain ()
+		{
+		var power = new TeslaPowerwallLibrary.Models.PowerReadings { Site = 100, Solar = 200, Load = 300, Battery = 0 };
+		Call ("ApplyPolledState", 50d, power, null, 20d, "self_consumption", null, null, null);
+		Assert.That (_driver.OperatingSettingsVisible, Is.True);
+		Call ("ApplyPolledState", 50d, power, null, null, null, null, null, null);
+		Assert.That (_driver.OperatingSettingsVisible, Is.False);
+		Call ("ApplyPolledState", 50d, power, null, 0d, "backup", null, null, null);
+		Assert.That (_driver.OperatingSettingsVisible, Is.True, "A real zero reserve is available, not missing.");
+		Assert.That (_driver.BackupReservePercent, Is.Zero);
+		}
+
 	private sealed class DelayedClient : PowerwallClientBase
 		{
 		internal DelayedClient () : base ("test@example.invalid") { }

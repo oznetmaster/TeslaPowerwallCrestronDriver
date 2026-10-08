@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## 1.2.0 - 2026-10-08
+
+- Add Gateway and signed Powerwall 3 local connections using TeslaPowerwallLibrary 2.1.0, while preserving existing Owner and Fleet configurations.
+- Add local endpoint and credential configuration, with independent signing-key provisioning for signed access over Ethernet or home-network Wi-Fi.
+- Make local controls read-only by default, with capability-dependent settings and configurable local polling (15 seconds by default).
+- Allow separately configured cloud history alongside local live readings; unavailable local values are not replaced with invented readings.
+
 ## 1.1.8 - 2026-09-22
 
 - Update TeslaPowerwallLibrary to 2.0.0, including fixes for partial operation changes, numeric zero reserve and stale settings caches.
