@@ -4,7 +4,7 @@ Use NUnit 5.0.0 and NUnit3TestAdapter 6.3.0. The net472 project validates the pr
 
 ## Read-only live matrix
 
-Run Owner, Fleet, Gateway and signed LAN separately. Ordinary home-network Wi-Fi and Ethernet use the same local API; either IP address or a resolvable hostname may be supplied. Temporary setup Wi-Fi is outside the driver acceptance matrix.
+Run Owner, Fleet, Gateway and signed LAN separately. Ordinary home-network Wi-Fi and Ethernet use the same local API; either IP address or a resolvable hostname may be supplied.
 
 Use `LiveTestSettings.json` in NUnit `TestDataDirectory`, or set `TESLA_LIVE_TEST_DATA_DIRECTORY` on Windows. Set NUnit `EnableLiveTests=true`; the input normally retains `enabled: false`. An explicit false parameter always disables live tests. The filename and portable JSON fields are identical for the library, Windows driver and processor tests. Neither suite enrolls keys or sends power-control commands.
 

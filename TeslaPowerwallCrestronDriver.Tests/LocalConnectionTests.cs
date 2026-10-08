@@ -3,6 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
 using System.Security.Cryptography;
 using Crestron.DeviceDrivers.EntityModel.Data;
 using NUnit.Framework;
@@ -66,17 +69,21 @@ public sealed class LocalConnectionTests
 		Assert.That (settings.Protocol, Is.EqualTo (PowerwallLocalProtocol.Gateway));
 		}
 
-	/// <summary>Checks that independent local access does not require cloud credentials.</summary>
-	[Test]
-	public void SetupNetworkUsesEquipmentAuthenticationWithoutCloud ()
+	/// <summary>Rejects unsupported modes without changing the active configuration.</summary>
+	/// <param name="connection">The unsupported connection mode.</param>
+	[TestCase ("Setup Wi-Fi")]
+	[TestCase ("unknown")]
+	public void UnsupportedConnectionIsRejected (string connection)
 		{
 		var errors = new Dictionary<string, string> ();
-		var values = Values ("ConnectionMode", "Setup Wi-Fi");
+		var values = Values ("ConnectionMode", connection);
 		values["LocalHost"] = new DriverEntityValue ("192.0.2.1");
 		values["LocalPassword"] = new DriverEntityValue ("synthetic");
-		var settings = new LocalConnectionSettings ().Merge (values, errors);
-		Assert.That (errors, Is.Empty);
-		Assert.That (settings.Protocol, Is.EqualTo (PowerwallLocalProtocol.Tedapi));
+		var current = new LocalConnectionSettings ();
+		var proposed = current.Merge (values, errors);
+		Assert.That (errors.ContainsKey ("ConnectionMode"), Is.True);
+		Assert.That (current.Connection, Is.EqualTo ("Cloud"));
+		Assert.Throws<InvalidOperationException> (() => _ = proposed.Protocol);
 		}
 
 	/// <summary>Checks missing or malformed signed-access credentials without disclosing them.</summary>
@@ -103,6 +110,17 @@ public sealed class LocalConnectionTests
 		values["LocalSigningKey"] = new DriverEntityValue (key.ToXmlString (true));
 		new LocalConnectionSettings ().Merge (values, errors);
 		Assert.That (errors.ContainsKey ("LocalSigningKey"), Is.True);
+		}
+
+	/// <summary>Checks the installer choices in the actual driver manifest, including packaged test data.</summary>
+	[Test]
+	public void InstallerOffersOnlyCloudAndHomeNetworkConnections ()
+		{
+		using JsonDocument manifest = JsonDocument.Parse (File.ReadAllText (Path.Combine (TestSupport.DataDirectory, "DriverDefinition.json")));
+		var connection = manifest.RootElement.GetProperty ("ConfigurationSteps").GetProperty ("Items")
+			.EnumerateArray ().Single (item => item.GetProperty ("Id").GetString () == "ConnectionMode");
+		Assert.That (connection.GetProperty ("AvailableValues").EnumerateArray ().Select (value => value.GetString ()),
+			Is.EqualTo (new[] { "Cloud", "Gateway", "Signed LAN" }));
 		}
 
 	private static Dictionary<string, DriverEntityValue?> Values (string key, string value) => new () { [key] = new DriverEntityValue (value) };

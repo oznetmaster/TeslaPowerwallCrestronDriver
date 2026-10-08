@@ -17,7 +17,7 @@ internal sealed class LocalConnectionSettings
 	internal string Connection { get; private set; } = "Cloud";
 	/// <summary>Gets the IP address or DNS hostname.</summary>
 	internal string Host { get; private set; } = string.Empty;
-	/// <summary>Gets the local customer or equipment-label password.</summary>
+	/// <summary>Gets the local customer password.</summary>
 	internal string Password { get; private set; } = string.Empty;
 	/// <summary>Gets the private key from the masked persistent configuration.</summary>
 	internal string SigningKey { get; private set; } = string.Empty;
@@ -33,8 +33,8 @@ internal sealed class LocalConnectionSettings
 	internal PowerwallLocalProtocol Protocol => Connection switch
 		{
 		"Gateway" => PowerwallLocalProtocol.Gateway,
-		"Setup Wi-Fi" => PowerwallLocalProtocol.Tedapi,
-		_ => PowerwallLocalProtocol.TedapiSigned
+		"Signed LAN" => PowerwallLocalProtocol.TedapiSigned,
+		_ => throw new InvalidOperationException ("Select Gateway or Signed LAN for local access.")
 		};
 
 	/// <summary>Merges an installer update without changing the active settings.</summary>
@@ -88,9 +88,9 @@ internal sealed class LocalConnectionSettings
 			{
 			errors["LocalRefreshIntervalSeconds"] = "Local polling must be between 15 and 3600 seconds.";
 			}
-		if (next.Connection != "Cloud" && next.Connection != "Gateway" && next.Connection != "Setup Wi-Fi" && next.Connection != "Signed LAN")
+		if (next.Connection != "Cloud" && next.Connection != "Gateway" && next.Connection != "Signed LAN")
 			{
-			errors["ConnectionMode"] = "Select Cloud, Gateway, Setup Wi-Fi, or Signed LAN.";
+			errors["ConnectionMode"] = "Select Cloud, Gateway, or Signed LAN.";
 			}
 		if (next.IsLocal)
 			{
@@ -102,7 +102,7 @@ internal sealed class LocalConnectionSettings
 				}
 			if (string.IsNullOrWhiteSpace (next.Password))
 				{
-				errors["LocalPassword"] = "Enter the local customer password, or full equipment-label password for setup Wi-Fi.";
+				errors["LocalPassword"] = "Enter the local customer password.";
 				}
 			if (next.Connection == "Signed LAN")
 				{

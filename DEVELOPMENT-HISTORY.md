@@ -1,9 +1,14 @@
 # Development and validation history
 
+## Local connection correction - 1.2.1
+
+- Remove the mistakenly exposed setup-network option from installer choices and runtime validation. Local connections use Ethernet or home-network Wi-Fi.
+- Add regressions for unsupported modes, the packaged installer choices, and portable diagnostic input validation.
+
 ## Local connection update - 1.2.0
 
 - Update to the published TeslaPowerwallLibrary 2.1.0 package.
-- Add Gateway, setup-network TEDAPI and signed Powerwall 3 LAN configuration, preserving existing cloud installations.
+- Add Gateway and signed Powerwall 3 LAN configuration, preserving existing cloud installations.
 - Local polling is configurable from 15 to 3600 seconds (default 15). Cloud refresh remains separately configurable from 30 to 3600 seconds (default 60). Requests are serialized and the polling delay starts after completion.
 - Make local controls read-only by default. Optional cloud history requires explicit enablement and the exact numeric site ID.
 - Add independent driver key provisioning and portable Windows/processor local live-test inputs.

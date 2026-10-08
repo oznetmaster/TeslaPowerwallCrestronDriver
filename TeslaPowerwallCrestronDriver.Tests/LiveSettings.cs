@@ -34,7 +34,7 @@ internal sealed class LiveSettings
 	/// <summary>Gets or sets the Fleet region.</summary>
 	[DataMember (Name = "region")]
 	public string Region { get; set; }
-	/// <summary>Gets or sets Gateway, Setup Wi-Fi, or Signed LAN.</summary>
+	/// <summary>Gets or sets Gateway or Signed LAN.</summary>
 	[DataMember (Name = "localProtocol")]
 	public string LocalProtocol { get; set; }
 	/// <summary>Gets or sets the local hostname or address.</summary>

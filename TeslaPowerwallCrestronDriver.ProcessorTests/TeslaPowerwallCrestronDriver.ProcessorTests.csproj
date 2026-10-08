@@ -7,7 +7,7 @@
     <ProcessorTestSdkRoot Condition="'$(ProcessorTestSdkRoot)' == ''">$(MSBuildProjectDirectory)\..\..\CrestronHomeNUnit</ProcessorTestSdkRoot>
     <BuildProcessorTestPackages Condition="'$(BuildProcessorTestPackages)' == '' And '$(BuildingInsideVisualStudio)' == 'true'">true</BuildProcessorTestPackages>
     <BuildProcessorTestPackages Condition="'$(BuildProcessorTestPackages)' == ''">false</BuildProcessorTestPackages>
-    <AssemblyName>TeslaPowerwallCrestronDriver.ProcessorTests</AssemblyName><RootNamespace>CrestronHomeNUnit.Driver</RootNamespace><Version>1.2.0</Version>
+    <AssemblyName>TeslaPowerwallCrestronDriver.ProcessorTests</AssemblyName><RootNamespace>CrestronHomeNUnit.Driver</RootNamespace><Version>1.2.1</Version>
   </PropertyGroup>
   <Import Project="$(ProcessorTestSdkRoot)\ProcessorTestPackage\ProcessorTestPackage.props" Condition="'$(BuildProcessorTestPackages)' == 'true'" />
   <ItemGroup Condition="'$(BuildProcessorTestPackages)' == 'true'">

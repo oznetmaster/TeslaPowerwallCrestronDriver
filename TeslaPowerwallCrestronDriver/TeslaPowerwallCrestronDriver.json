@@ -20,15 +20,15 @@
       "Website": "",
       "PhoneNumber": ""
     },
-    "DriverVersion": "1.2.000.0000",
-    "VersionDate": "2026-10-08 20:00:00.000"
+    "DriverVersion": "1.2.001.0000",
+    "VersionDate": "2026-10-08 22:18:40.934"
   },
   "ConfigurationSteps": {
     "Items": [
       {
         "Id": "ConnectionMode",
         "Title": "Connection",
-        "Description": "Cloud preserves Owner/Fleet access. Gateway uses the customer HTTPS API. Setup Wi-Fi uses equipment-label TEDAPI. Signed LAN uses a separately registered driver key.",
+        "Description": "Cloud preserves Owner/Fleet access. Gateway uses the customer HTTPS API. Signed LAN uses a separately registered driver key. Both local connections use your home network over Ethernet or Wi-Fi.",
         "Required": false,
         "Persistent": true,
         "ValueType": "String",
@@ -36,7 +36,6 @@
         "AvailableValues": [
           "Cloud",
           "Gateway",
-          "Setup Wi-Fi",
           "Signed LAN"
         ]
       },
@@ -64,7 +63,7 @@
       {
         "Id": "LocalPassword",
         "Title": "Local Password",
-        "Description": "Gateway and Signed LAN: local customer password. Setup Wi-Fi: full equipment-label password. This is not your Tesla account password.",
+        "Description": "Gateway and Signed LAN: local customer password. This is not your Tesla account password.",
         "Required": false,
         "Persistent": true,
         "ValueType": "String",
@@ -82,7 +81,7 @@
       {
         "Id": "AllowLocalControl",
         "Title": "Allow Local Setting Changes",
-        "Description": "Local access is read-only by default. True permits the existing reserve, mode and supported grid settings. Setup Wi-Fi remains read-only.",
+        "Description": "Local access is read-only by default. True permits the existing reserve, mode and supported grid settings.",
         "Required": false,
         "Persistent": true,
         "ValueType": "String",

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## 1.2.1 - 2026-10-08
+
+- Remove the unsupported setup Wi-Fi connection option and correct local connection documentation. Gateway and signed access use Ethernet or home-network Wi-Fi.
+
 ## 1.2.0 - 2026-10-08
 
 - Add Gateway and signed Powerwall 3 local connections using TeslaPowerwallLibrary 2.1.0, while preserving existing Owner and Fleet configurations.

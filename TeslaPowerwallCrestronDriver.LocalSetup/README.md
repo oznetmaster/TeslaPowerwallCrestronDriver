@@ -2,7 +2,7 @@
 
 This Windows tool prepares an independent Powerwall 3 signing key for the installed Crestron Home driver. It does not depend on the Windows dashboard, test credential helper, or their signing keys. Nothing is enrolled automatically by driver startup, configuration validation, or polling.
 
-Gateway connections need only the local host and customer password. Setup Wi-Fi uses the full equipment-label password and requires network routing from the processor to that interface. Signed LAN requires the local customer password **and** a verified RSA-4096 key.
+Gateway connections need only the local host and customer password. Both local protocols connect over the home network using Ethernet or normal Powerwall Wi-Fi. Signed LAN requires the local customer password **and** a verified RSA-4096 key.
 
 ## Windows download
 

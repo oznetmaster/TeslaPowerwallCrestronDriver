@@ -70,7 +70,7 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 	private string _lastHistorySelection = string.Empty;
 	private bool IsLocal => _local.IsLocal;
 	private int PollIntervalSeconds => IsLocal ? _local.IntervalSeconds : _refreshIntervalSeconds;
-	private bool CanControl => !IsLocal || (_local.AllowControl && _local.Connection != "Setup Wi-Fi");
+	private bool CanControl => !IsLocal || _local.AllowControl;
 	private bool SupportsGridSettings => !IsLocal || _local.Protocol != PowerwallLocalProtocol.Gateway;
 	private bool HasHistory => !IsLocal || (_local.UseCloudHistory && !string.IsNullOrWhiteSpace (_refreshToken) && IsNumericSiteId (_siteId));
 	private string _siteName = string.Empty;

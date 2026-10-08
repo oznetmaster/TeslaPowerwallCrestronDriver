@@ -41,8 +41,9 @@ The Fleet API covers everything this driver uses — live status, energy/impact 
 
 ### Local access
 
+The driver connects over your home network using Ethernet or normal Powerwall Wi-Fi. These are two network interfaces to the same local API, not different connection modes.
+
 - **Gateway** — customer-authenticated local HTTPS reads and supported reserve/mode controls. Available telemetry depends on the device.
-- **Setup Wi-Fi** — TEDAPI reads through an interface reachable from the processor, using the full equipment-label password. This driver keeps this connection read-only.
 - **Signed LAN** — Powerwall 3 TEDAPI over a hostname or IP address, using the local customer password and a separately enrolled RSA-4096 driver key. Follow [local provisioning](TeslaPowerwallCrestronDriver.LocalSetup/README.md).
 
 Local status defaults to a configurable 15-second delay between completed polls. Settings changes require **Allow Local Setting Changes**. Energy and Impact pages require explicit **Use Cloud History with Local Access**, separate cloud credentials and the numeric ID of the same physical site. Cloud failure does not switch live monitoring away from local access. Storm Watch is available through Owner cloud mode only.
@@ -133,7 +134,7 @@ Crestron Home Driver NuGet Publishing Standard v1 is **not** an official Crestro
 5. Save the configuration and assign the driver to a room. Its tile appears on the **Home screen**, not the room screen.
 6. Open Home on a touch panel or app. Confirm that the tile is online and opens the live power page.
 
-For an existing installation, importing a newer package does not update the installed instance automatically. Apply the available driver update in Setup, then verify version **1.2.000.0000**, the retained connection settings and room assignment.
+For an existing installation, importing a newer package does not update the installed instance automatically. Apply the available driver update in Setup, then verify version **1.2.001.0000**, the retained connection settings and room assignment.
 
 ### Configuration
 
@@ -143,11 +144,11 @@ For an existing installation, importing a newer package does not update the inst
 | Tesla Refresh Token | Required for Cloud or explicitly enabled cloud history; otherwise unused. OAuth refresh token for the Tesla account — an Owner API refresh token if Client ID above is blank, or a Fleet API refresh token if it is set. See [Obtaining a Tesla Refresh Token](#obtaining-a-tesla-refresh-token) below. |
 | Tesla Energy Site ID | In Cloud mode: numeric ID or exact site name; blank selects the account's default site. For cloud history with local access: required exact numeric ID of the same physical site. |
 | Cloud Refresh Interval Seconds | Delay after completed cloud reads, or between optional history refreshes in local mode. 30–3600 seconds; default 60. |
-| Connection | Cloud (existing default), Gateway, Setup Wi-Fi, or Signed LAN. |
+| Connection | Cloud (existing default), Gateway, or Signed LAN. Local access works over Ethernet or home-network Wi-Fi. |
 | Local Hostname or IP Address | Required for local access. Hostnames are retained for DNS resolution; an optional HTTPS port is accepted. |
-| Local Password | Local customer password for Gateway/Signed LAN; full equipment-label password for Setup Wi-Fi. Masked and persistent. |
+| Local Password | Local customer password for Gateway/Signed LAN. Masked and persistent. |
 | Registered Local Signing Key | Signed LAN only: the registered RSA-4096 private key exported by the independent provisioning tool. Masked and persistent. |
-| Allow Local Setting Changes | Default false. Enables supported controls for Gateway/Signed LAN; Setup Wi-Fi remains read-only. |
+| Allow Local Setting Changes | Default false. Enables supported controls for Gateway/Signed LAN. |
 | Local Polling Interval Seconds | 15–3600 seconds; default 15. The same interval governs the local response cache. Slow responses extend the gap; requests do not overlap. |
 | Use Cloud History with Local Access | Default false. Requires cloud credentials and the numeric ID of this exact site. Local-only monitoring never contacts the cloud. |
 
@@ -230,7 +231,7 @@ Tesla and Powerwall are trademarks of Tesla, Inc.
 
 ## Automated tests
 
-The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 5 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 84 offline unit cases exercise driver logic without credentials or real device commands. The 29 processor lifecycle cases are skipped by the net472 Windows run; the desktop SDK harness executes them alongside 11 Windows provisioning cases. See the [test guide](TeslaPowerwallCrestronDriver.Tests/README.md) and [Android UI tests](TeslaPowerwallCrestronDriver.AndroidTests/README.md).
+The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 5 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 87 offline unit cases exercise driver logic without credentials or real device commands. The 29 processor lifecycle cases are skipped by the net472 Windows run; the desktop SDK harness executes them alongside 11 Windows provisioning cases. See the [test guide](TeslaPowerwallCrestronDriver.Tests/README.md) and [Android UI tests](TeslaPowerwallCrestronDriver.AndroidTests/README.md).
 
 ```powershell
 dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -c Release
@@ -306,4 +307,4 @@ GitHub-hosted validation remains mandatory for the checked-out source, and the n
 
 All maintained suites use NUnit 5.0.0 and NUnit3TestAdapter 6.3.0. Workflow and Android tests use CrestronHomeNUnit.TestAdapter 2.3.0; processor packages use the pinned public SDK 2.3.0 source. See the [test dependency and live-input guide](TeslaPowerwallCrestronDriver.Tests/README.md).
 
-The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 84 unit and 29 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.
+The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 87 unit and 29 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.

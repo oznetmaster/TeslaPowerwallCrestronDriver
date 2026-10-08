@@ -12,6 +12,14 @@ namespace TeslaPowerwallCrestronDriver.Tests;
 [TestFixture]
 public sealed class LiveSettingsContractTests
 	{
+	/// <summary>Checks that diagnostic inputs cannot bypass the supported connection modes.</summary>
+	[Test]
+	public void SetupWifiInputIsRejected ()
+		{
+		var input = new LiveSettings { Mode = "local", LocalProtocol = "Setup Wi-Fi", Host = "192.0.2.1", Password = "synthetic" };
+		Assert.Throws<InvalidDataException> (() => input.ValidateLocal ());
+		}
+
 	/// <summary>Checks that a processor-written input can be loaded again with credentials and settings intact.</summary>
 	/// <param name="mode">The input connection mode.</param>
 	[TestCase ("cloud")]
