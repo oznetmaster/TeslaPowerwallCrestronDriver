@@ -1,6 +1,6 @@
 # TeslaPowerwallCrestronDriver processor tests
 
-## Test package 1.2.1
+## Test package 2.0.0
 
 The release includes the standalone test `.pkg`, documentation, source revisions and checksums. It uses NUnit 5.0.0 and the public CrestronHomeNUnit SDK 2.3.0. Unit and lifecycle suites run without cloud or Powerwall access. Manual live suites require private inputs and are read-only.
 
@@ -39,7 +39,7 @@ The package contains 87 offline cases and 29 lifecycle cases. Lifecycle tests ex
 
 Hosted and release validation compare the exact discovered test identities with execution results and the merged package, rather than maintaining a duplicate expected test count. Live tests are discovered but not operated in hosted CI. Only documented processor-runtime skips are accepted by the Windows net472 check; the desktop SDK harness must execute every automatic test successfully.
 
-The 1.2.1 driver uses TeslaPowerwallLibrary 2.1.0. Offline cases cover cloud compatibility, local configuration, capability-dependent UI and read-only controls, portable inputs, refresh lifetime, and per-driver logging. Desktop test-runner dependencies and their Newtonsoft.Json dependency are excluded from the processor merge.
+The 2.0.0 driver uses TeslaPowerwallLibrary 2.1.0. Offline cases cover cloud compatibility, local configuration, capability-dependent UI and read-only controls, portable inputs, refresh lifetime, and per-driver logging. Desktop test-runner dependencies and their Newtonsoft.Json dependency are excluded from the processor merge.
 
 ## Read-only live API matrix
 

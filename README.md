@@ -25,7 +25,7 @@ The driver connects to a single Tesla Powerwall energy site through the [TeslaPo
 
 ## Supported Connection Modes
 
-Select **Connection** in Configure. Existing installations retain **Cloud**: leave **Tesla Fleet API Client ID** blank for Owner, or set it for Fleet. Local choices are described below.
+Select **Connection** in Configure. For Owner or Fleet, choose **Cloud**: leave **Tesla Fleet API Client ID** blank for Owner, or set it for Fleet. Local choices are described below. Upgrading from a previous version requires completing the configuration again; see [Upgrading to 2.0.0](#upgrading-to-200).
 
 ### Tesla Owner API (Cloud)
 
@@ -134,7 +134,16 @@ Crestron Home Driver NuGet Publishing Standard v1 is **not** an official Crestro
 5. Save the configuration and assign the driver to a room. Its tile appears on the **Home screen**, not the room screen.
 6. Open Home on a touch panel or app. Confirm that the tile is online and opens the live power page.
 
-For an existing installation, importing a newer package does not update the installed instance automatically. Apply the available driver update in Setup, then verify version **1.2.001.0000**, the retained connection settings and room assignment.
+### Upgrading to 2.0.0
+
+**An in-place driver update is supported, but reconfiguration is required.** This is an Entity V2 driver: keep the existing instance and apply the update in Crestron Home Setup. You do not need to remove and re-add the driver.
+
+1. Import the new package, then apply the available update to the existing **Tesla Powerwall** instance in Setup. Importing the package alone does not update that instance.
+2. Reopen the driver's configuration and complete the new configuration dialogs. Do this even if you are keeping the existing cloud connection.
+3. Choose **Cloud** for Owner or Fleet and review the site, credentials and cloud interval. For local access, choose **Gateway** or **Signed LAN**, supply the home-network endpoint and local credentials, and review the local interval and control permissions. Signed LAN requires an enrolled signing key; optional cloud history is configured separately.
+4. Save the configuration. Confirm installed version **2.0.000.0000**, the room assignment, online status, live readings and any programmed commands/events before returning the installation to service.
+
+The major version marks this required configuration step. An automatic, unattended upgrade is not sufficient. Existing cloud authentication modes and programmable interfaces remain available.
 
 ### Configuration
 

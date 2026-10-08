@@ -1,11 +1,12 @@
 # Development and validation history
 
-## Local connection correction - 1.2.1
+## Local connection correction and major release - 2.0.0
 
+- Supersede the 1.2 series with 2.0.0: existing Entity V2 instances support an in-place update, followed by required reconfiguration. The 1.2.1 candidate was not published.
 - Remove the mistakenly exposed setup-network option from installer choices and runtime validation. Local connections use Ethernet or home-network Wi-Fi.
 - Add regressions for unsupported modes, the packaged installer choices, and portable diagnostic input validation.
 
-## Local connection update - 1.2.0
+## Local connection development - superseded 1.2.0
 
 - Update to the published TeslaPowerwallLibrary 2.1.0 package.
 - Add Gateway and signed Powerwall 3 LAN configuration, preserving existing cloud installations.

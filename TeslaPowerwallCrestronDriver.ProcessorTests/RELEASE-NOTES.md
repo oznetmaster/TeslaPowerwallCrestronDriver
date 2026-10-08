@@ -1,4 +1,4 @@
-# Test package 1.2.1
+# Test package 2.0.0
 
 Add coverage for unsupported connection rejection, the packaged installer choices and diagnostic input validation. Automatic suites now contain 87 unit and 29 lifecycle cases. The six-case local live suite and three common cloud live checks are unchanged.
 

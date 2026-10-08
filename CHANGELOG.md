@@ -4,16 +4,17 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
-## 1.2.1 - 2026-10-08
+## 2.0.0 - 2026-10-08
 
-- Remove the unsupported setup Wi-Fi connection option and correct local connection documentation. Gateway and signed access use Ethernet or home-network Wi-Fi.
+- **Reconfiguration required:** update the existing Entity V2 driver in place, then complete its new configuration dialogs. Removing and re-adding the driver is not required.
+- Add Gateway and signed Powerwall 3 local access over Ethernet or home-network Wi-Fi using TeslaPowerwallLibrary 2.1.0.
+- Add independent signing-key provisioning and configurable local polling (15 seconds by default), with local controls read-only by default.
+- Allow separately configured cloud history alongside local live readings, while preserving Owner/Fleet connections and programmable interfaces.
+- Limit configuration to Cloud, Gateway and Signed LAN.
 
-## 1.2.0 - 2026-10-08
+## Withdrawn 1.2 series
 
-- Add Gateway and signed Powerwall 3 local connections using TeslaPowerwallLibrary 2.1.0, while preserving existing Owner and Fleet configurations.
-- Add local endpoint and credential configuration, with independent signing-key provisioning for signed access over Ethernet or home-network Wi-Fi.
-- Make local controls read-only by default, with capability-dependent settings and configurable local polling (15 seconds by default).
-- Allow separately configured cloud history alongside local live readings; unavailable local values are not replaced with invented readings.
+The 1.2.0 publication is superseded by 2.0.0 to make the required reconfiguration explicit. The prepared 1.2.1 correction was not published.
 
 ## 1.1.8 - 2026-09-22
 
