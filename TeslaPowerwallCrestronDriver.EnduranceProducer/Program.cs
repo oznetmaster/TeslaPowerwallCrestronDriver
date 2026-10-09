@@ -17,6 +17,12 @@ if (args.Length == 4 && args[0] == "--diagnose-local")
     catch (Exception error) when (error is not OutOfMemoryException) { Console.Error.WriteLine($"Independent diagnostic failed ({error.GetType().Name}); no evidence accepted."); Environment.ExitCode = 2; }
     return;
 }
+if (args.Length == 2 && args[0] == "--prepare-lifetime-baseline")
+{
+    try { await PrepareLifetimeAsync(args[1]); }
+    catch (Exception error) when (error is not OutOfMemoryException) { Console.Error.WriteLine($"Lifetime preparation stopped ({error.GetType().Name}); no sample accepted."); Environment.ExitCode = 2; }
+    return;
+}
 if (args.SequenceEqual(["--self-test"])) { Checks.Run(); Console.WriteLine("self-test-passed"); return; }
 try { await RunAsync(); }
 catch (Exception error) when (error is not OutOfMemoryException) { Console.Error.WriteLine($"Producer stopped ({error.GetType().Name}); no observation accepted."); Environment.ExitCode = 2; }
@@ -34,7 +40,7 @@ async Task RunAsync()
         SubmissionEndurance.ValidatePlan(request.Plan);
         var settings = await ReadSettingsAsync(request.SettingsFile);
         if (request.Plan.Identity != settings.Identity || request.Plan.InstallationIdentity != settings.InstallationIdentity ||
-            request.Plan.Requirement.Id != settings.RequirementId || request.Plan.ProcessorIdentity != $"processor:{settings.ProcessorHost}")
+            request.Plan.Requirement.Id != settings.RequirementId || request.Plan.ReservationId != settings.ReservationId || request.Plan.ProcessorIdentity != $"processor:{settings.ProcessorHost}")
             throw new InvalidDataException("Candidate, processor, or endurance policy differs from pinned settings.");
         using var deadline = new CancellationTokenSource(request.Plan.ProbeTimeout);
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Saved processor credentials require Windows.");
@@ -44,7 +50,7 @@ async Task RunAsync()
         var network = new NetworkCredential(credential.UserName, credential.Password);
         var uptime = await ProcessorUptime.ReadAsync(settings.ProcessorHost, network, credential.SshFingerprint, TimeSpan.FromSeconds(30), deadline.Token);
         var runtime = await LifetimeEvidence.ReadAsync(settings.ProcessorHost, network, credential.SshFingerprint, deadline.Token);
-        boot = await Baseline.ReadOrCreateAsync(settings.BaselineFile, request.Plan, settings, uptime, runtime, deadline.Token);
+        boot = await Baseline.ReadAsync(settings.BaselineFile, settings, uptime, runtime, deadline.Token);
         evidence["bootIdentity"] = boot; evidence["managedRuntime"] = runtime; evidence["lifetimeLimitation"] = LifetimeEvidence.Limitation;
         await using var configuration = await ConfigurationClient.ConnectAsync(new ProcessorConnectionOptions { Host = settings.ProcessorHost, CertificateSha256 = credential.CertificateSha256 }, network, deadline.Token);
         var device = await configuration.GetDeviceAsync(settings.DeviceId, deadline.Token) ?? throw new InvalidDataException("Tesla device is missing.");
@@ -67,6 +73,30 @@ async Task RunAsync()
     Console.Write(JsonSerializer.Serialize(new SubmissionEnduranceProbeResult(request.Plan.Identity, request.Plan.ProcessorIdentity,
         request.Plan.InstallationIdentity, request.Plan.ReservationId, request.Plan.ProducerId, boot, outcome,
         JsonSerializer.SerializeToUtf8Bytes(evidence, json)), json));
+}
+
+
+async Task PrepareLifetimeAsync(string settingsPath)
+{
+    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Saved processor credentials require Windows.");
+    var settings = await ReadSettingsAsync(settingsPath);
+    if (File.Exists(settings.BaselineFile)) throw new InvalidDataException("Existing lifetime preparation must be inspected, never replaced.");
+    using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(4));
+    var stored = DevToolsCredentialBindings.Read(settings.CredentialBindings).Resolve(DevToolsCredentialPurpose.Processor, settings.ProcessorHost);
+    var network = new NetworkCredential(stored.UserName, stored.Password);
+    var uptime = await ProcessorUptime.ReadAsync(settings.ProcessorHost, network, stored.SshFingerprint!, TimeSpan.FromSeconds(30), deadline.Token);
+    var runtime = await LifetimeEvidence.ReadAsync(settings.ProcessorHost, network, stored.SshFingerprint!, deadline.Token);
+    await using var client = await ConfigurationClient.ConnectAsync(new ProcessorConnectionOptions { Host = settings.ProcessorHost, CertificateSha256 = stored.CertificateSha256 }, network, deadline.Token);
+    var device = await client.GetDeviceAsync(settings.DeviceId, deadline.Token) ?? throw new InvalidDataException("Tesla device is missing.");
+    var evidence = new Dictionary<string,object?>(); VerifyDevice(device, settings, evidence);
+    var processorNow = uptime.LocalStartedAt.Add(uptime.Uptime).Add(DateTimeOffset.UtcNow - uptime.ObservedUtc);
+    if (!ReadingFreshness.IsCurrent(device.PropertyValues["statusSummary"].GetString() ?? "", processorNow, settings.MaximumReadingAgeSeconds)) throw new InvalidDataException("Driver readings are not current.");
+    var independent = await IndependentObservation.ReadAsync(settings.LiveInputFile, settings.LiveInputSha256, settings.LocalHost, deadline.Token);
+    IndependentObservation.Compare(device, independent, evidence);
+    await DriverPayloadInspection.CompareAsync(settings.ProcessorHost, network, stored.SshFingerprint!, settings.PackagePath, settings.Identity.PackageSha256, settings.CatalogueId, TimeSpan.FromMinutes(2), deadline.Token);
+    await Baseline.CreateAsync(settings.BaselineFile, settings, uptime, runtime, deadline.Token);
+    using var input = File.OpenRead(settings.BaselineFile);
+    Console.WriteLine(JsonSerializer.Serialize(new { baselineSha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(input)), settings.ReservationId, readOnlyPreparation = true, acceptedAsEnduranceSample = false }, json));
 }
 
 async Task<Settings> ReadSettingsAsync(string path)
@@ -95,39 +125,61 @@ static void VerifyDevice(DeviceInfo device, Settings settings, IDictionary<strin
 }
 
 sealed record Settings(string ProcessorHost, string CredentialBindings, string PackagePath, string CatalogueId, int DeviceId, int LocationId,
-    string DriverName, string DriverModel, string DriverVersion, SubmissionEvidenceIdentity Identity, string InstallationIdentity, string RequirementId, string BaselineFile, string LiveInputFile, string LiveInputSha256, string LocalHost, int MaximumReadingAgeSeconds)
+    string DriverName, string DriverModel, string DriverVersion, SubmissionEvidenceIdentity Identity, string InstallationIdentity, string RequirementId, string ReservationId, string BaselineFile, string LiveInputFile, string LiveInputSha256, string LocalHost, int MaximumReadingAgeSeconds)
 {
     public void Validate()
     {
-        if (DeviceId <= 0 || LocationId <= 0 || new[] { ProcessorHost, CredentialBindings, PackagePath, CatalogueId, DriverName, DriverModel, DriverVersion, InstallationIdentity, RequirementId, BaselineFile }.Any(string.IsNullOrWhiteSpace) ||
-            !Path.IsPathFullyQualified(CredentialBindings) || !Path.IsPathFullyQualified(PackagePath) || !Path.IsPathFullyQualified(BaselineFile) || !Path.IsPathFullyQualified(LiveInputFile) || string.IsNullOrWhiteSpace(LocalHost) || LiveInputSha256.Length != 64 || !LiveInputSha256.All(Uri.IsHexDigit) || MaximumReadingAgeSeconds <= 0) throw new InvalidDataException("Complete reviewed Tesla producer settings.");
+        if (DeviceId <= 0 || LocationId <= 0 || new[] { ProcessorHost, CredentialBindings, PackagePath, CatalogueId, DriverName, DriverModel, DriverVersion, InstallationIdentity, RequirementId, ReservationId, BaselineFile }.Any(string.IsNullOrWhiteSpace) ||
+            !Path.IsPathFullyQualified(CredentialBindings) || !Path.IsPathFullyQualified(PackagePath) || !Path.IsPathFullyQualified(BaselineFile) || !Path.IsPathFullyQualified(LiveInputFile) || string.IsNullOrWhiteSpace(LocalHost) || LiveInputSha256.Length != 64 || !LiveInputSha256.All(Uri.IsHexDigit) || MaximumReadingAgeSeconds <= 0 || !Guid.TryParseExact(ReservationId, "N", out _)) throw new InvalidDataException("Complete reviewed Tesla producer settings.");
         var published = Path.TrimEndingDirectorySeparator(Path.GetFullPath(AppContext.BaseDirectory)) + Path.DirectorySeparatorChar;
-        if (Path.GetFullPath(BaselineFile).StartsWith(published, StringComparison.OrdinalIgnoreCase) || Path.GetFullPath(LiveInputFile).StartsWith(published, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Lifetime baseline and private Tesla input must be outside the pinned producer.");
+        if (!Path.GetFullPath(BaselineFile).StartsWith(published, StringComparison.OrdinalIgnoreCase) || Path.GetFullPath(LiveInputFile).StartsWith(published, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Lifetime baseline must be inside the pinned publication; private Tesla input must stay outside.");
     }
 }
 static class Baseline
 {
-    sealed record Saved(string Plan, string Settings, DateTimeOffset Earliest, DateTimeOffset Latest, ManagedRuntimeIdentity Runtime, string Identity);
-    public static async Task<string> ReadOrCreateAsync(string path, SubmissionEndurancePlan plan, Settings settings, ProcessorUptimeSnapshot uptime, ManagedRuntimeIdentity runtime, CancellationToken token)
+    sealed record Saved(string Settings, DateTimeOffset Earliest, DateTimeOffset Latest, ManagedRuntimeIdentity Runtime, string Identity);
+    static string Binding(Settings settings) => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(settings)));
+    public static async Task CreateAsync(string path, Settings settings, ProcessorUptimeSnapshot uptime, ManagedRuntimeIdentity runtime, CancellationToken token)
     {
-        var planHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(plan)));
-        var settingsHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(settings)));
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        bool existing = File.Exists(path);
-        await using var stream = new FileStream(path, existing ? FileMode.Open : FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
-        Saved baseline;
-        if (!existing) { baseline = new(planHash, settingsHash, uptime.EarliestStartUtc, uptime.LatestStartUtc, runtime, $"processor-boot:{uptime.EarliestStartUtc:O}:{uptime.LatestStartUtc:O};ssp:{runtime.ParentPid};children:{string.Join(',', runtime.ChildPids)}"); await JsonSerializer.SerializeAsync(stream, baseline, cancellationToken: token); stream.Flush(true); }
-        else { if (stream.Length is 0 or > 65536) throw new InvalidDataException("Lifetime acquisition is incomplete or invalid."); baseline = await JsonSerializer.DeserializeAsync<Saved>(stream, cancellationToken: token) ?? throw new InvalidDataException("Lifetime baseline is invalid."); }
-        if (baseline.Plan != planHash || baseline.Settings != settingsHash || uptime.EarliestStartUtc > baseline.Latest.AddSeconds(2) || uptime.LatestStartUtc < baseline.Earliest.AddSeconds(-2) || baseline.Runtime is null || !baseline.Runtime.Matches(runtime)) throw new InvalidDataException("Processor boot or managed driver runtime identity changed.");
-        return baseline.Identity;
+        await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        var saved = new Saved(Binding(settings), uptime.EarliestStartUtc, uptime.LatestStartUtc, runtime, $"processor-boot:{uptime.EarliestStartUtc:O}:{uptime.LatestStartUtc:O};ssp:{runtime.ParentPid};children:{string.Join(',', runtime.ChildPids)}");
+        await JsonSerializer.SerializeAsync(stream, saved, cancellationToken: token); stream.Flush(true);
+    }
+    public static async Task<string> ReadAsync(string path, Settings settings, ProcessorUptimeSnapshot uptime, ManagedRuntimeIdentity runtime, CancellationToken token)
+    {
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        if (stream.Length is 0 or > 65536) throw new InvalidDataException("Lifetime preparation is incomplete or invalid.");
+        var saved = await JsonSerializer.DeserializeAsync<Saved>(stream, cancellationToken: token) ?? throw new InvalidDataException("Lifetime baseline is invalid.");
+        if (saved.Settings != Binding(settings) || uptime.EarliestStartUtc > saved.Latest.AddSeconds(2) || uptime.LatestStartUtc < saved.Earliest.AddSeconds(-2) || saved.Runtime is null || !saved.Runtime.Matches(runtime)) throw new InvalidDataException("Processor boot or managed driver runtime identity changed.");
+        return saved.Identity;
+    }
+    public static void CheckReadOnlyPreparation()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "tesla-baseline-selftest-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "baseline.json");
+        var settings = new Settings("test.invalid", path, path, "test", 1, 1, "test", "test", "1.0.0.0", new(new('a',64),new('b',40),new('c',64),new('d',64)), "test", "test", Guid.NewGuid().ToString("N"), path,path,new('e',64),"local.invalid",120);
+        var now = DateTimeOffset.UtcNow; var uptime = new ProcessorUptimeSnapshot(TimeSpan.FromHours(1), DateTime.Now.AddHours(-1), now, now); var runtime = new ManagedRuntimeIdentity(101,[102]);
+        bool Reject(Func<Task> operation) { try { operation().GetAwaiter().GetResult(); return false; } catch (IOException) { return true; } catch (InvalidDataException) { return true; } }
+        try
+        {
+            if (!Reject(async () => { await ReadAsync(path,settings,uptime,runtime,CancellationToken.None); }) || File.Exists(path)) throw new InvalidDataException("Missing baseline was created by observation.");
+            CreateAsync(path,settings,uptime,runtime,CancellationToken.None).GetAwaiter().GetResult();
+            if (!Reject(() => CreateAsync(path,settings,uptime,runtime,CancellationToken.None))) throw new InvalidDataException("Baseline replacement was allowed.");
+            var bytes = File.ReadAllBytes(path); File.SetAttributes(path,FileAttributes.ReadOnly);
+            ReadAsync(path,settings,uptime,runtime,CancellationToken.None).GetAwaiter().GetResult();
+            if (!bytes.SequenceEqual(File.ReadAllBytes(path)) || !Reject(async () => { await ReadAsync(path,settings with { ReservationId = Guid.NewGuid().ToString("N") },uptime,runtime,CancellationToken.None); }) || !Reject(async () => { await ReadAsync(path,settings,uptime,new ManagedRuntimeIdentity(101,[103]),CancellationToken.None); })) throw new InvalidDataException("Immutable baseline/run/runtime guards failed.");
+        }
+        finally { if(File.Exists(path)) { File.SetAttributes(path,FileAttributes.Normal);File.Delete(path); } Directory.Delete(directory); }
     }
 }
 static class Checks
 {
     public static void Run()
     {
+        Baseline.CheckReadOnlyPreparation();
         bool rejected = false;
-        try { new Settings("", "x", "x", "x", 0, 0, "x", "x", "x", null!, "", "", "x", "x", "x", "x", 0).Validate(); }
+        try { new Settings("", "x", "x", "x", 0, 0, "x", "x", "x", null!, "", "", "", "x", "x", "x", "x", 0).Validate(); }
         catch (InvalidDataException) { rejected = true; }
         if (!rejected) throw new InvalidDataException("Settings validation self-test failed.");
         string Row(int pid, int parent, string name) => $"{pid} {parent} 0 0 0 0 0 0 0 0 0 0 {name}";
