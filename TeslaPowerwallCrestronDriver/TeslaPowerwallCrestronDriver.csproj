@@ -51,7 +51,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<EmbeddedResource Include="TeslaPowerwallCrestronDriver.json" />
+    <EmbeddedResource Include="TeslaPowerwallCrestronDriver.json">
+      <LogicalName Condition="'$(CrestronSubmission)' == 'true'">$(AssemblyName).json</LogicalName>
+    </EmbeddedResource>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -69,6 +71,15 @@
 		<None Include="TeslaPowerwallCrestronDriver.Local.targets" />
 	</ItemGroup>
 
+  <!-- Submission packaging is explicitly enabled by build-local settings. -->
+  <PropertyGroup Condition="'$(CrestronSubmission)' == 'true' And '$(BuildForTests)' != 'true' And '$(DesignTimeBuild)' != 'true'">
+    <AssemblyName>NeilColvin_EnergyAutomation_TeslaPowerwall_IP</AssemblyName>
+  </PropertyGroup>
+  <Target Name="ValidateCrestronSubmission" Condition="'$(CrestronSubmission)' == 'true' And '$(BuildForTests)' != 'true' And '$(DesignTimeBuild)' != 'true'">
+    <Error Condition="'$(SubmissionHelpTargetsImported)' != 'true'" Text="Set SubmissionToolsDirectory to the pinned CrestronHomeDevTools submission scripts directory." />
+    <CallTarget Targets="ValidateSubmissionHelpSettings" />
+  </Target>
+
 	<PropertyGroup>
 		<LocalCrestronSdkLibDir Condition="'$(LocalCrestronSdkLibDir)' == ''">$(CRESTRON_DRIVER_SDK_LIBRARIES)</LocalCrestronSdkLibDir>
 		<LocalNet472ReferenceAssemblies Condition="'$(LocalNet472ReferenceAssemblies)' == ''">$(NET472_REFERENCE_ASSEMBLIES)</LocalNet472ReferenceAssemblies>
@@ -79,7 +90,7 @@
 		<PackageDriverIgnoreExitCode Condition="'$(PackageDriverIgnoreExitCode)' == ''">false</PackageDriverIgnoreExitCode>
 	</PropertyGroup>
 
-	<Target Name="BumpDriverVersion" BeforeTargets="BeforeBuild" Condition="'$(BuildForTests)' != 'true' And '$(DesignTimeBuild)' != 'true'">
+	<Target Name="BumpDriverVersion" BeforeTargets="BeforeBuild" DependsOnTargets="ValidateCrestronSubmission" Condition="'$(BuildForTests)' != 'true' And '$(DesignTimeBuild)' != 'true'">
 		<Exec Command="pwsh -NoProfile -NonInteractive -File &quot;$(MSBuildProjectDirectory)\BumpDriverVersion.ps1&quot; -ManifestPath &quot;$(MSBuildProjectDirectory)\TeslaPowerwallCrestronDriver.json&quot; -Configuration &quot;$(Configuration)&quot; -ReleaseVersion &quot;$(DriverReleaseVersion)&quot;" />
 	</Target>
 
@@ -104,7 +115,9 @@
 			<IncludeInPkgFiles Include="$(MSBuildProjectDirectory)\IncludeInPkg\**\*" Exclude="$(MSBuildProjectDirectory)\IncludeInPkg\**\*.xsd" />
 		</ItemGroup>
 		<Copy SourceFiles="@(IncludeInPkgFiles)" DestinationFiles="@(IncludeInPkgFiles->'$(TargetDir)patched\IncludeInPkg\%(RecursiveDir)%(Filename)%(Extension)')" />
+		<CallTarget Targets="StageSubmissionHelp" Condition="'$(CrestronSubmission)' == 'true'" />
 		<Exec Command="&quot;$(ManifestUtilExe)&quot; --file &quot;$(TargetDir)patched\$(AssemblyName).dll&quot; --lib &quot;$(TargetDir.TrimEnd('\'))&quot; --output &quot;$(TargetDir.TrimEnd('\'))&quot;" ContinueOnError="$(PackageDriverContinueOnError)" IgnoreExitCode="$(PackageDriverIgnoreExitCode)" />
+		<CallTarget Targets="VerifySubmissionHelp" Condition="'$(CrestronSubmission)' == 'true'" />
 	</Target>
 
 	<Target Name="DeployDriver" AfterTargets="PackageDriver" Condition="'$(BuildForTests)' != 'true' And '$(DeployAfterBuild)' == 'true' And '$(Configuration)' == 'Debug' And '$(CrestronHomeIP)' != ''">
@@ -124,5 +137,6 @@
 	</Target>
 
 	<Import Project="TeslaPowerwallCrestronDriver.Local.targets" Condition="Exists('TeslaPowerwallCrestronDriver.Local.targets')" />
+  <Import Project="$(SubmissionToolsDirectory)/CrestronSubmissionHelp.targets" Condition="'$(CrestronSubmission)' == 'true' And Exists('$(SubmissionToolsDirectory)/CrestronSubmissionHelp.targets')" />
 
 </Project>

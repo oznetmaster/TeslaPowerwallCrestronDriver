@@ -1,0 +1,11 @@
+# Tesla Powerwall endurance producer
+
+This .NET 10 Windows program implements the public SubmissionEnduranceProbeRequest contract using selected encrypted processor credentials, pinned read-only processor APIs and an existing private Signed LAN input. It never sends Powerwall controls, rotates credentials or changes driver settings.
+
+Each observation validates the exact plan/settings, installed instance identity, loaded/configured/online/ready state and installed package payload. It requires a bounded current driver update time and a new independent read with cache and local session persistence disabled. Operating mode and rounded backup reserve are compared exactly; independently read battery/power values must be present, finite and valid. Samples have different timestamps, so instantaneous power/battery readings are diagnostics and make no meter-accuracy claim. The maximum displayed-reading age is an explicitly reviewed collector setting, not an additional official test-plan requirement.
+
+A fixed processor boot window plus SSH-pinned TASKSTAT parent/managed-child PID baseline detects shared runtime restarts. Empty, interrupted or differently bound baseline files cannot be replaced or reused. TASKSTAT cannot detect an individual driver reload within an unchanged shared runtime or PID reuse between observations. This limitation is retained in every observation.
+
+settings.json must be inside the immutable publication and its inventory. Credential bindings, private LiveInputFile and baselineFile stay outside it. Pin LiveInputSha256 and LocalHost to the reviewed existing site; private input changes fail closed. No password or private key belongs in the publication. Run the Release --self-test before publication. A build or diagnostic read is not production endurance evidence. No production collection has started.
+
+For a bounded independent read only, --diagnose-local ABSOLUTE_PRIVATE_INPUT INPUT_SHA256 EXPECTED_HOST writes nonsecret readings and returns the actual diagnostic exit. It does not accept an endurance sample. Hold the selected provisioning profile lock when diagnosing its generated input.
