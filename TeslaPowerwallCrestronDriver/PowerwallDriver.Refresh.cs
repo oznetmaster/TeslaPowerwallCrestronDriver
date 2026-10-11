@@ -44,20 +44,8 @@ public sealed partial class TeslaPowerwallDriver
 			{
 			_refreshCancellationTokenSource = new CancellationTokenSource ();
 			CancellationToken token = _refreshCancellationTokenSource.Token;
-			lock (_stateLock)
-				{
-				_localAvailabilityRevision++;
-				_localTransportUnavailable = false;
-				_localTransportReachable = null;
-				_refreshRequestedWhileBusy = false;
-				_localAvailabilityToken = token;
-				}
+			lock (_stateLock) _localPollFailures = 0;
 			while (_refreshWake.Wait (0)) { }
-			if (IsLocal)
-				{
-				var endpoint = new Uri ("https://" + _local.Host);
-				_ = Task.Run (() => LocalAvailabilityLoopAsync (endpoint, token));
-				}
 			_ = Task.Run (() => RefreshLoopAsync (token));
 			}
 		}
@@ -136,7 +124,7 @@ public sealed partial class TeslaPowerwallDriver
 			{
 			try
 				{
-				await _refreshWake.WaitAsync (TimeSpan.FromSeconds (PollIntervalSeconds), cancellationToken).ConfigureAwait (false);
+				await _refreshWake.WaitAsync (TimeSpan.FromSeconds (NextPollDelaySeconds), cancellationToken).ConfigureAwait (false);
 				}
 			catch (OperationCanceledException)
 				{
@@ -169,14 +157,6 @@ public sealed partial class TeslaPowerwallDriver
 		if (System.Threading.Interlocked.CompareExchange (ref _refreshInProgress, 1, 0) != 0)
 			{
 			DebugLog ("RunPollAsync: refresh already in progress; skipping new request.");
-			lock (_stateLock)
-				{
-				if (IsLocal && _localTransportUnavailable && _localTransportReachable == true)
-					{
-					if (_refreshInProgress != 0) _refreshRequestedWhileBusy = true;
-					else if (_refreshWake.CurrentCount == 0) _refreshWake.Release ();
-					}
-				}
 			return;
 			}
 
@@ -197,15 +177,7 @@ public sealed partial class TeslaPowerwallDriver
 		finally
 			{
 			DebugLog ("RunPollAsync: leaving refresh execution.");
-			lock (_stateLock)
-				{
-				System.Threading.Interlocked.Exchange (ref _refreshInProgress, 0);
-				if (_refreshRequestedWhileBusy)
-					{
-					_refreshRequestedWhileBusy = false;
-					if (!cancellationToken.IsCancellationRequested && _refreshWake.CurrentCount == 0) _refreshWake.Release ();
-					}
-				}
+			System.Threading.Interlocked.Exchange (ref _refreshInProgress, 0);
 			}
 		}
 
@@ -232,6 +204,7 @@ public sealed partial class TeslaPowerwallDriver
 			catch (PowerwallCloudNoTeslaAuthFileException ex)
 				{
 					EnsureCurrentClient (client, cancellationToken);
+				RecordLocalPollFailure (cancellationToken);
 				SetOfflineState ("Invalid or missing Tesla tokens");
 				LogError ("Tesla authentication failed: " + ex.Message);
 				return;
@@ -239,6 +212,7 @@ public sealed partial class TeslaPowerwallDriver
 			catch (PowerwallInvalidConfigurationException ex)
 				{
 					EnsureCurrentClient (client, cancellationToken);
+				RecordLocalPollFailure (cancellationToken);
 				SetUnavailableState ("Configuration error");
 				LogError ("Tesla configuration error: " + ex.Message);
 				return;
@@ -246,9 +220,16 @@ public sealed partial class TeslaPowerwallDriver
 			catch (PowerwallException ex)
 				{
 					EnsureCurrentClient (client, cancellationToken);
+				RecordLocalPollFailure (cancellationToken);
 				SetOfflineState ("Unable to connect to Tesla");
 				LogError ("Tesla connection error: " + ex.Message);
 				return;
+				}
+			catch (Exception)
+				{
+				EnsureCurrentClient (client, cancellationToken);
+				RecordLocalPollFailure (cancellationToken);
+				throw;
 				}
 
 			if (!connected)
@@ -256,7 +237,8 @@ public sealed partial class TeslaPowerwallDriver
 				lock (_stateLock)
 					{
 					EnsureCurrentClient (client, cancellationToken);
-					SetOfflineState ("Unable to connect to Tesla");
+					RecordLocalPollFailure (cancellationToken);
+				SetOfflineState ("Unable to connect to Tesla");
 					}
 				return;
 				}
@@ -397,23 +379,43 @@ public sealed partial class TeslaPowerwallDriver
 		}
 
 	private async Task PollAsync (TeslaPowerwallLibrary.Powerwall client, CancellationToken cancellationToken)
+  {
+  bool succeeded;
+  if (IsLocal)
+   {
+   using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+   deadline.CancelAfter(LocalCorePollTimeout);
+   try { succeeded = await PollCoreAsync(client, deadline.Token).ConfigureAwait(false); }
+   catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested)
+    {
+    lock (_stateLock)
+     {
+     EnsureCurrentClient(client, cancellationToken);
+     RecordLocalPollFailure(cancellationToken);
+     SetOfflineState("Local Powerwall data refresh timed out");
+     }
+    return;
+    }
+   catch (Exception)
+    {
+    EnsureCurrentClient(client, cancellationToken);
+    RecordLocalPollFailure(cancellationToken);
+    throw;
+    }
+   }
+  else succeeded = await PollCoreAsync(client, cancellationToken).ConfigureAwait(false);
+  // Optional history retains its own configured cadence/request budget and cannot
+  // delay the already-published live values or reuse the core's cancelled deadline.
+  if (succeeded) await RefreshHistoryIfDueAsync(client, cancellationToken).ConfigureAwait(false);
+  }
+
+	private async Task<bool> PollCoreAsync (TeslaPowerwallLibrary.Powerwall client, CancellationToken cancellationToken)
 		{
-		long availabilityRevision;
-		lock (_stateLock) availabilityRevision = _localAvailabilityRevision;
 		try
 			{
-			// This read bypasses the data cache. A TCP return alone never restores the tile.
-			if (IsLocal && !await client.IsConnectedAsync (cancellationToken).ConfigureAwait (false))
-				{
-				lock (_stateLock)
-					{
-					EnsureCurrentClient (client, cancellationToken);
-					SetOfflineState ("Unable to read the local Powerwall");
-					}
-				return;
-				}
-			EnsureCurrentClient (client, cancellationToken);
-			double? level = await client.LevelAsync (scale: true, cancellationToken: cancellationToken).ConfigureAwait (false);
+			double? level = IsLocal
+				? await ReadFreshLocalLevelAsync (client, cancellationToken).ConfigureAwait (false)
+				: await client.LevelAsync (scale: true, cancellationToken: cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
 			PowerReadings power = await client.GetPowerReadingsAsync (cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
@@ -437,24 +439,24 @@ public sealed partial class TeslaPowerwallDriver
 			lock (_stateLock)
 				{
 				EnsureCurrentClient (client, cancellationToken);
-				if (IsLocal && availabilityRevision != _localAvailabilityRevision) return;
-				_localTransportUnavailable = false;
+				_localPollFailures = 0;
 				ApplyPolledState (level, power, gridStatus, reserve, mode, gridCharging, gridExport, stormWatch);
 				OnlineIndicatorIsOnline = true;
 				ReadyIndicatorIsReady = true;
 				StatusSummary = BuildUpdatedSummary ();
 				}
-			// Optional cloud history must not delay local live feedback or republish online.
-			await RefreshHistoryIfDueAsync (client, cancellationToken).ConfigureAwait (false);
+			return true;
 			}
 		catch (PowerwallException ex)
 			{
 			lock (_stateLock)
 				{
 					EnsureCurrentClient (client, cancellationToken);
+				RecordLocalPollFailure (cancellationToken);
 				SetOfflineState ("Update failed: " + ex.Message);
 				LogWarning ("Tesla poll failed: " + ex.Message);
 				}
+			return false;
 			}
 		}
 

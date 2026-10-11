@@ -1,67 +1,84 @@
-// Copyright (c) 2026 Neil Colvin.
-// Licensed under the MIT License with Commons Clause. See LICENSE in the repository root.
+// Copyright (c) 2026 Neil Colvin. Licensed under MIT with Commons Clause.
 using System;
-using System.Diagnostics;
 using System.Net;
-using System.Net.Sockets;
+using System.Net.Http;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Crestron.DeviceDrivers.EntityModel;
+using Crestron.DeviceDrivers.SDK;
+using Crestron.DeviceDrivers.SDK.EntityModel;
 using TeslaPowerwall.CrestronDriver;
+using TeslaPowerwallLibrary;
+using TeslaPowerwallLibrary.Local;
 namespace TeslaPowerwallCrestronDriver.Tests;
-[TestFixture, Category ("Offline")]
+[TestFixture, Category("Offline")]
 public sealed class LocalAvailabilityTests
-	{
-	[Test]
-	public async Task SuccessfulProbeClosesOwnedSocketAndCancelsDeadline ()
-		{
-		int closed = 0;
-		Assert.That (await TeslaPowerwallDriver.AwaitLocalConnectionAsync (Task.CompletedTask, () => closed++, TimeSpan.FromSeconds (3), CancellationToken.None), Is.True);
-		Assert.That (closed, Is.EqualTo (1));
-		}
-	[Test]
-	public async Task TimeoutIsBoundedAndClosesEvenAnUnfinishedConnect ()
-		{
-		var pending = new TaskCompletionSource<bool> (TaskCreationOptions.RunContinuationsAsynchronously);
-		int closed = 0;
-		var time = Stopwatch.StartNew ();
-		Assert.That (await TeslaPowerwallDriver.AwaitLocalConnectionAsync (pending.Task, () => closed++, TimeSpan.FromMilliseconds (40), CancellationToken.None), Is.False);
-		Assert.That (time.Elapsed, Is.LessThan (TimeSpan.FromSeconds (2)));
-		Assert.That (closed, Is.EqualTo (1));
-		pending.SetException (new SocketException ());
-		}
-	[Test]
-	public async Task CancellationClosesPendingSocketWithoutPublishingAvailability ()
-		{
-		var pending = new TaskCompletionSource<bool> (TaskCreationOptions.RunContinuationsAsynchronously);
-		using var cts = new CancellationTokenSource ();
-		int closed = 0;
-		var probe = TeslaPowerwallDriver.AwaitLocalConnectionAsync (pending.Task, () => closed++, TimeSpan.FromSeconds (3), cts.Token);
-		cts.Cancel ();
-		await Assert.ThrowsAsync<OperationCanceledException> (async () => await probe);
-		Assert.That (closed, Is.GreaterThanOrEqualTo (1));
-		pending.SetException (new ObjectDisposedException ("synthetic socket"));
-		await Task.CompletedTask;
-		}
-	[Test]
-	public async Task RefusedTransportIsNotSuccess ()
-		{
-		int closed = 0;
-		Assert.That (await TeslaPowerwallDriver.AwaitLocalConnectionAsync (Task.FromException (new SocketException (10061)), () => closed++, TimeSpan.FromSeconds (3), CancellationToken.None), Is.False);
-		Assert.That (closed, Is.EqualTo (1));
-		}
-	[Test]
-	public async Task ProbeUsesConfiguredPortAgainstLoopbackOnly ()
-		{
-		var listener = new TcpListener (IPAddress.Loopback, 0);
-		listener.Start ();
-		try
-			{
-			int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-			var accept = listener.AcceptTcpClientAsync ();
-			Assert.That (await TeslaPowerwallDriver.LocalTransportProbeAsync (new Uri ("https://127.0.0.1:" + port), TimeSpan.FromSeconds (3), CancellationToken.None), Is.True);
-			using var accepted = await accept;
-			}
-		finally { listener.Stop (); }
-		}
-	}
+{
+ [Test]
+ public async Task ExistingGatewayTransportReusesRequiredFreshBatteryResponseWithoutAnotherRequest()
+ {
+  var options=new PowerwallOptions {Host="192.0.2.1",Password="synthetic",LocalProtocol=PowerwallLocalProtocol.Gateway,
+   CacheExpireSeconds=60,NoLocalSessionPersistence=true};
+  var handler=new BatteryHandler();
+  var type=typeof(Powerwall).Assembly.GetType("TeslaPowerwallLibrary.Local.PowerwallLocalClient");
+  using var transport=(PowerwallLocalClient)Activator.CreateInstance(type,BindingFlags.Instance|BindingFlags.NonPublic,null,new object[]{options,handler},null);
+  var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+  type.GetField("_httpClient",flags).SetValue(transport,new HttpClient(handler));
+  type.GetField("_hasAuth",flags).SetValue(transport,true);
+  using var client=new Powerwall(options);
+  typeof(Powerwall).GetField("_client",flags).SetValue(client,transport);
+  double fresh=await TeslaPowerwallDriver.ReadFreshLocalLevelAsync(client,CancellationToken.None);
+  double? reused=await client.LevelAsync(scale:true);
+  Assert.That(fresh,Is.EqualTo(reused));
+  Assert.That(handler.Requests,Is.EqualTo(1),"The actual HTTP transport/cache must not duplicate the required battery read.");
+ }
+ [Test]
+ public async Task FullAuthenticatedGatewayCorePollUsesFourSerializedRequestsAndCachedOperationProjection()
+ {
+  var options=new PowerwallOptions{Host="192.0.2.1",Password="synthetic",LocalProtocol=PowerwallLocalProtocol.Gateway,CacheExpireSeconds=60,NoLocalSessionPersistence=true};
+  var handler=new CoreHandler();var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+  var type=typeof(Powerwall).Assembly.GetType("TeslaPowerwallLibrary.Local.PowerwallLocalClient");
+  using var transport=(PowerwallLocalClient)Activator.CreateInstance(type,flags,null,new object[]{options,handler},null);
+  type.GetField("_httpClient",flags).SetValue(transport,new HttpClient(handler));type.GetField("_hasAuth",flags).SetValue(transport,true);
+  using var client=new Powerwall(options);typeof(Powerwall).GetField("_client",flags).SetValue(client,transport);
+  using var logger=new Crestron.DeviceDrivers.SDK.DriverLogger("request-count-test");
+  using var driver=new TeslaPowerwallDriver(new DriverControllerCreationArgs("request-count-test",TestSupport.DataDirectory,logger.AppLogger,null),TestSupport.Resources(logger));
+  typeof(TeslaPowerwallDriver).GetField("_client",flags).SetValue(driver,client);
+  var settings=new LocalConnectionSettings().Merge(new System.Collections.Generic.Dictionary<string,Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue?>
+   {["ConnectionMode"]=new Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue("Gateway")},new System.Collections.Generic.Dictionary<string,string>());
+  typeof(TeslaPowerwallDriver).GetField("_local",flags).SetValue(driver,settings);
+  await TestSupport.Complete((Task)typeof(TeslaPowerwallDriver).GetMethod("PollAsync",flags).Invoke(driver,new object[]{client,CancellationToken.None}));
+  Assert.That(handler.Paths,Is.EqualTo(new[]{"/api/system_status/soe","/api/meters/aggregates","/api/system_status/grid_status","/api/operation"}));
+  Assert.That(driver.OnlineIndicatorIsOnline,Is.True);Assert.That(driver.ReadyIndicatorIsReady,Is.True);
+ }
+ private sealed class CoreHandler:HttpMessageHandler
+ {
+  internal readonly System.Collections.Generic.List<string> Paths=new();
+  protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
+  {
+   Assert.That(request.Method,Is.EqualTo(HttpMethod.Get));Assert.That(request.RequestUri.Host,Is.EqualTo("192.0.2.1"));
+   var path=request.RequestUri.AbsolutePath;Paths.Add(path);
+   var body=path switch {
+    "/api/system_status/soe"=>"{\"percentage\":75}",
+    "/api/meters/aggregates"=>"{\"site\":{\"instant_power\":100},\"solar\":{\"instant_power\":200},\"battery\":{\"instant_power\":0},\"load\":{\"instant_power\":300}}",
+    "/api/system_status/grid_status"=>"{\"grid_status\":\"SystemGridConnected\"}",
+    "/api/operation"=>"{\"backup_reserve_percent\":20,\"real_mode\":\"self_consumption\"}",
+    _=>throw new AssertionException("Unexpected request "+path)};
+   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK){Content=new StringContent(body)});
+  }
+ }
+ private sealed class BatteryHandler:HttpMessageHandler
+ {
+  internal int Requests;
+  protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
+  {
+   Assert.That(request.Method,Is.EqualTo(HttpMethod.Get));
+   Assert.That(request.RequestUri.Host,Is.EqualTo("192.0.2.1"));
+   Assert.That(request.RequestUri.AbsolutePath,Is.EqualTo("/api/system_status/soe"));
+   Requests++;
+   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK){Content=new StringContent("{\"percentage\":75}")});
+  }
+ }
+}

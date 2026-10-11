@@ -6,11 +6,11 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 ## Unreleased
 
-- Keep background polling active after a request timeout so fresh successful API reads can restore online feedback without restarting the driver.
-
-- Correct failed-poll feedback so the Home tile explicitly shows Offline and clears stale readings.
-- Detect loss of the configured local connection independently of the data polling interval; restore online feedback only after a fresh API observation and successful data poll.
-- Prevent delayed polling and cancelled connection monitors from overwriting offline or reconfigured state.
+- Publish explicit Offline feedback after a failed required API observation; recover only through a fresh successful API/data poll.
+- Remove the separate recurring TCP connection probes. Reuse the required battery read and retain serialized polling and stateful commands.
+- Bound the whole local core poll by the existing 15-second timeout and back off repeated local failures; reset configured cadence on success.
+- Pass driver lifetime cancellation into control requests and reject updates from superseded clients.
+- Preserve configured cloud/history cadence and document that default polling is not a universal processor resource or 15-second physical-loss guarantee.
 
 ## 2.0.0 — 2026-10-08
 

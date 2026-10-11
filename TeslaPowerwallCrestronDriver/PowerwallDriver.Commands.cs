@@ -42,7 +42,7 @@ public sealed partial class TeslaPowerwallDriver
 	public void SetBackupReservePercent ([EntityParameter (RangeMinimum = 0, RangeMaximum = 100, Units = "Percent")] int value)
 		{
 		_ = Task.Run (() => ExecuteControlAsync (
-			client => client.SetReserveAsync (value),
+			(client, token) => client.SetReserveAsync (value, cancellationToken: token),
 			() => BackupReservePercent = value,
 			"set backup reserve to " + value.ToString (CultureInfo.InvariantCulture) + "%"));
 		}
@@ -57,7 +57,7 @@ public sealed partial class TeslaPowerwallDriver
 			return;
 			}
 		_ = Task.Run (() => ExecuteControlAsync (
-			client => client.SetGridChargingAsync (value),
+			(client, token) => client.SetGridChargingAsync (value, cancellationToken: token),
 			() => GridChargingEnabled = value,
 			"set grid charging to " + value));
 		}
@@ -73,7 +73,7 @@ public sealed partial class TeslaPowerwallDriver
 			}
 
 		_ = Task.Run (() => ExecuteControlAsync (
-			client => client.SetModeAsync (value),
+			(client, token) => client.SetModeAsync (value, cancellationToken: token),
 			() =>
 				{
 				OperationMode = value;
@@ -97,7 +97,7 @@ public sealed partial class TeslaPowerwallDriver
 			}
 
 		_ = Task.Run (() => ExecuteControlAsync (
-			client => client.SetGridExportAsync (value),
+			(client, token) => client.SetGridExportAsync (value, cancellationToken: token),
 			() =>
 				{
 				GridExportMode = value;
@@ -118,7 +118,7 @@ public sealed partial class TeslaPowerwallDriver
 			}
 
 		_ = Task.Run (() => ExecuteControlAsync (
-			client => client.SetStormWatchAsync (value),
+			(client, token) => client.SetStormWatchAsync (value, cancellationToken: token),
 			() => StormWatchEnabled = value,
 			"set storm watch to " + value));
 		}
@@ -266,7 +266,7 @@ public sealed partial class TeslaPowerwallDriver
 	// afterwards - unconditionally, whether the command succeeded or failed - re-reads the true state from
 	// Tesla and corrects those properties if the command was actually rejected, clamped to a different
 	// value, or failed outright.
-	private async Task ExecuteControlAsync (Func<TeslaPowerwallLibrary.Powerwall, Task> action, Action applyOptimisticUpdate, string description)
+	private async Task ExecuteControlAsync (Func<TeslaPowerwallLibrary.Powerwall, CancellationToken, Task> action, Action applyOptimisticUpdate, string description)
 		{
 		if (!CanControl)
 			{
@@ -298,7 +298,7 @@ public sealed partial class TeslaPowerwallDriver
 						}
 					applyOptimisticUpdate ();
 					}
-				await action (client).ConfigureAwait (false);
+				await action (client, token).ConfigureAwait (false);
 				EnsureCurrentClient (client, token);
 				}
 			finally

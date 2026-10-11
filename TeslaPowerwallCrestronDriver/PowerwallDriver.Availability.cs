@@ -1,91 +1,68 @@
 // Copyright (c) 2026 Neil Colvin.
 // Licensed under the MIT License with Commons Clause. See LICENSE in the repository root.
-
 using System;
-using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-
+using TeslaPowerwallLibrary;
+using TeslaPowerwallLibrary.Models;
 namespace TeslaPowerwall.CrestronDriver;
-
 public sealed partial class TeslaPowerwallDriver
-	{
-	// Independent of the installer's data/cache cadence and the full API/history poll.
-	// A complete local transport loss is noticed in at most one probe plus one delay
-	// (nominally five seconds, excluding runtime scheduling/UI propagation).
-	internal static readonly TimeSpan LocalAvailabilityDelay = TimeSpan.FromSeconds (2);
-	internal static readonly TimeSpan LocalAvailabilityTimeout = TimeSpan.FromSeconds (3);
+{
+ // Use the existing local request timeout as one whole core-poll budget instead
+ // of allowing every sequential data read to consume another fifteen seconds.
+ internal static readonly TimeSpan LocalCorePollTimeout = TimeSpan.FromSeconds(15);
+ private int _localPollFailures;
 
-	private async Task LocalAvailabilityLoopAsync (Uri endpoint, CancellationToken token)
-		{
-		try
-			{
-			while (!token.IsCancellationRequested)
-				{
-				bool reachable = await LocalTransportProbeAsync (endpoint, LocalAvailabilityTimeout, token).ConfigureAwait (false);
-				ApplyLocalAvailability (reachable, token);
-				await Task.Delay (LocalAvailabilityDelay, token).ConfigureAwait (false);
-				}
-			}
-		catch (OperationCanceledException) when (token.IsCancellationRequested) { }
-		catch (Exception ex)
-			{
-			ApplyLocalAvailability (false, token);
-			LogError ("Local availability monitor stopped: " + ex.Message);
-			}
-		}
+ // Retry only the normal data poll. First failure retains its configured delay;
+ // repeated local failures ramp to five minutes, never shortening a longer delay.
+ private int NextPollDelaySeconds
+ {
+  get
+  {
+   lock (_stateLock)
+   {
+    int baseline = PollIntervalSeconds;
+    if (!IsLocal || _localPollFailures < 2) return baseline;
+    int ceiling = Math.Max(baseline, 300);
+    int delay = baseline;
+    for (int count = 1; count < _localPollFailures && delay < ceiling; count++)
+     delay = Math.Min(ceiling, delay * 2);
+    return delay;
+   }
+  }
+ }
+ private void RecordLocalPollFailure(CancellationToken token)
+ {
+  lock (_stateLock)
+  {
+   token.ThrowIfCancellationRequested();
+   if (IsLocal) _localPollFailures = Math.Min(16, _localPollFailures + 1);
+  }
+ }
 
-	// No credentials, TLS bypass, device API request, or control operation. Socket
-	// success is transport-only and must never publish online/readiness or readings.
-	internal static async Task<bool> LocalTransportProbeAsync (Uri endpoint, TimeSpan timeout, CancellationToken token)
-		{
-		token.ThrowIfCancellationRequested ();
-		using var socket = new TcpClient ();
-		Task connect = socket.ConnectAsync (endpoint.DnsSafeHost, endpoint.Port);
-		return await AwaitLocalConnectionAsync (connect, () => socket.Dispose (), timeout, token).ConfigureAwait (false);
-		}
 
-	internal static async Task<bool> AwaitLocalConnectionAsync (Task connect, Action close, TimeSpan timeout, CancellationToken token)
-		{
-		using var deadline = CancellationTokenSource.CreateLinkedTokenSource (token);
-		_ = connect.ContinueWith (task => { _ = task.Exception; }, CancellationToken.None,
-			TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-		using var cancelSocket = token.Register (close);
-		try
-			{
-			Task expired = Task.Delay (timeout, deadline.Token);
-			Task completed = await Task.WhenAny (connect, expired).ConfigureAwait (false);
-			token.ThrowIfCancellationRequested ();
-			if (completed != connect) return false;
-			await connect.ConfigureAwait (false);
-			token.ThrowIfCancellationRequested ();
-			return true;
-			}
-		catch (SocketException) { token.ThrowIfCancellationRequested (); return false; }
-		catch (ObjectDisposedException) { token.ThrowIfCancellationRequested (); return false; }
-		finally { deadline.Cancel (); close (); }
-		}
-
-	private void ApplyLocalAvailability (bool reachable, CancellationToken token)
-		{
-		lock (_stateLock)
-			{
-			if (token.IsCancellationRequested || token != _localAvailabilityToken || !IsLocal) return;
-			bool returned = reachable && _localTransportReachable == false;
-			_localTransportReachable = reachable;
-			if (!reachable)
-				{
-				// Fence every read started before this failure, including cached successes.
-				_localAvailabilityRevision++;
-				_localTransportUnavailable = true;
-				SetOfflineState ("Local Powerwall connection unavailable");
-				}
-			else if (returned && _localTransportUnavailable && _refreshWake.CurrentCount == 0)
-				{
-				// Wake the normal serialized data poll. Only its uncached API observation
-				// and successful data reads may restore the tile and online/readiness flags.
-				_refreshWake.Release ();
-				}
-			}
-		}
-	}
+ // This is the poll's required battery read, not a separate availability request.
+ // A forced read also populates the signed client's telemetry cache used by
+ // subsequent power/grid projections; keep one owned HTTP client and no TCP loop.
+ internal static async Task<double> ReadFreshLocalLevelAsync(Powerwall client, CancellationToken token)
+ {
+  string payload = await client.PollAsync("/api/system_status/soe", force: true, cancellationToken: token).ConfigureAwait(false);
+  token.ThrowIfCancellationRequested();
+  try
+  {
+   using var document = JsonDocument.Parse(payload ?? "null");
+   if(document.RootElement.ValueKind != JsonValueKind.Object ||
+      !document.RootElement.TryGetProperty("percentage", out var percentage) ||
+      percentage.ValueKind != JsonValueKind.Number || !percentage.TryGetDouble(out var value) ||
+      double.IsNaN(value) || double.IsInfinity(value))
+    throw new PowerwallException("The local Powerwall did not provide a fresh battery reading.");
+   // Match Powerwall.LevelAsync(scale:true) exactly, including real zero values.
+   return (value / 0.95) - (5 / 0.95);
+  }
+  catch(JsonException ex)
+  {
+   throw new PowerwallException("The local Powerwall returned an invalid battery reading: " + ex.Message);
+  }
+ }
+}

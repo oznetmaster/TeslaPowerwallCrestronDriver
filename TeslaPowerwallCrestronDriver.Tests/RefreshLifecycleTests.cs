@@ -161,14 +161,13 @@ public sealed class RefreshLifecycleTests
 		}
 
 
-	private CancellationTokenSource LocalAvailability (int interval = 15)
+	private CancellationTokenSource ConfigureLocal (int interval = 15)
 		{
 		var settings = new LocalConnectionSettings ().Merge (new Dictionary<string, Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue?>
 			{ ["ConnectionMode"] = new Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue ("Gateway"),
 			  ["LocalRefreshIntervalSeconds"] = new Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue (interval) }, new Dictionary<string, string> ());
 		Set ("_local", settings);
 		var cts = new CancellationTokenSource ();
-		Set ("_localAvailabilityToken", cts.Token);
 		return cts;
 		}
 
@@ -186,75 +185,48 @@ public sealed class RefreshLifecycleTests
 		Assert.That (_driver.ReadyIndicatorIsReady, Is.False);
 		}
 
-	[TestCase (15)]
-	[TestCase (3600)]
-	public void TransportLossIgnoresDataRefreshCadenceAndTcpReturnCannotRestore (int interval)
-		{
-		using var cts = LocalAvailability (interval);
-		Property ("TileDisplay", "4.6 kW");
-		Property ("OnlineIndicatorIsOnline", true);
-		Property ("ReadyIndicatorIsReady", true);
-		Call ("ApplyLocalAvailability", false, cts.Token);
-		Assert.That (_driver.TileDisplay, Is.EqualTo ("Offline"));
-		Call ("ApplyLocalAvailability", true, cts.Token);
-		Assert.That (_driver.TileDisplay, Is.EqualTo ("Offline"));
-		Assert.That (_driver.OnlineIndicatorIsOnline, Is.False);
-		Assert.That (_driver.ReadyIndicatorIsReady, Is.False);
-		Assert.That (((SemaphoreSlim)Field ("_refreshWake")).CurrentCount, Is.EqualTo (1));
-		Assert.That ((int)typeof (TeslaPowerwallDriver).GetProperty ("PollIntervalSeconds", Private).GetValue (_driver), Is.EqualTo (interval));
-		Assert.That (TeslaPowerwallDriver.LocalAvailabilityDelay + TeslaPowerwallDriver.LocalAvailabilityTimeout, Is.LessThan (TimeSpan.FromSeconds (15)));
-		}
 
-	[TestCase (false)]
-	[TestCase (true)]
-	public void CancelledOrReplacedMonitorCannotOverwriteCurrentState (bool replace)
-		{
-		using var cts = LocalAvailability ();
-		if (replace) Set ("_localAvailabilityToken", new CancellationTokenSource ().Token); else cts.Cancel ();
-		Property ("TileDisplay", "current");
-		Call ("ApplyLocalAvailability", false, cts.Token);
-		Assert.That (_driver.TileDisplay, Is.EqualTo ("current"));
-		}
+
+
 
 	[Test]
-	public async Task InFlightFreshOrCachedReadCannotRepublishAfterTransportLoss ()
-		{
-		using var cts = LocalAvailability ();
-		_transport.CompletePoll = true;
-		var poll = (Task)Call ("PollAsync", _client, CancellationToken.None);
-		await TestSupport.Complete (_transport.Entered.Task);
-		Call ("ApplyLocalAvailability", false, cts.Token);
-		Call ("ApplyLocalAvailability", true, cts.Token);
-		_transport.Release.TrySetResult (true);
-		await TestSupport.Complete (poll);
-		Assert.That (_transport.ForceReads, Is.EqualTo (1), "Local availability must bypass cached responses.");
-		Assert.That (_driver.TileDisplay, Is.EqualTo ("Offline"));
-		Assert.That (_driver.OnlineIndicatorIsOnline, Is.False);
-		Assert.That (_driver.ReadyIndicatorIsReady, Is.False);
-		}
+ public async Task FailedFreshApiCannotPublishCachedData()
+ {
+  using var cts = ConfigureLocal();
+  _transport.CompletePoll = true;
+  _transport.Fail = true;
+  _transport.Release.TrySetResult(true);
+  Property("TileDisplay", "cached 4.6 kW");
+  Property("OnlineIndicatorIsOnline", true);
+  await TestSupport.Complete((Task)Call("PollAsync",_client,cts.Token));
+  Assert.That(_transport.Reads, Is.EqualTo(1), "No cached projections may publish after the required fresh API fails.");
+  Assert.That(_transport.ForceReads, Is.EqualTo(1));
+  Assert.That(_driver.TileDisplay, Is.EqualTo("Offline"));
+  Assert.That(_driver.OnlineIndicatorIsOnline, Is.False);
+ }
+
 
 	[Test]
 	public async Task FreshSuccessfulApiAndDataPollRestoreOfflineTile ()
 		{
-		using var cts = LocalAvailability ();
+		using var cts = ConfigureLocal ();
 		_transport.CompletePoll = true;
 		_transport.Release.TrySetResult (true);
-		Call ("ApplyLocalAvailability", false, cts.Token);
-		Call ("ApplyLocalAvailability", true, cts.Token);
+		Call ("SetOfflineState", "Synthetic failed required API observation");
 		await TestSupport.Complete ((Task)Call ("PollAsync", _client, CancellationToken.None));
 		Assert.That (_transport.ForceReads, Is.EqualTo (1));
+		Assert.That (_transport.SoeReads, Is.EqualTo (1), "The required fresh battery reading must not be issued again.");
 		Assert.That (_driver.TileDisplay, Does.Contain ("0.3 kW"));
 		Assert.That (_driver.OnlineIndicatorIsOnline, Is.True);
 		Assert.That (_driver.ReadyIndicatorIsReady, Is.True);
 		}
 
 	[Test]
-	public async Task ApiFailureDespiteAvailableTransportStaysOffline ()
+	public async Task RequiredFreshApiFailureStaysOffline ()
 		{
-		using var cts = LocalAvailability ();
+		using var cts = ConfigureLocal ();
 		_transport.Fail = true;
 		_transport.Release.TrySetResult (true);
-		Call ("ApplyLocalAvailability", true, cts.Token);
 		await TestSupport.Complete ((Task)Call ("PollAsync", _client, CancellationToken.None));
 		Assert.That (_transport.ForceReads, Is.EqualTo (1));
 		Assert.That (_driver.TileDisplay, Is.EqualTo ("Offline"));
@@ -265,7 +237,7 @@ public sealed class RefreshLifecycleTests
 	[Test]
 	public async Task ConnectionLossPreservesCachedHistoricalValuesAcrossRecovery ()
 		{
-		using var cts = LocalAvailability ();
+		using var cts = ConfigureLocal ();
 		EnableSyntheticHistory (new DelayedHistoryHandler ());
 		Set ("_lastHistorySelection", (string)Call ("HistorySelection"));
 		Set ("_nextHistoryRefresh", DateTimeOffset.UtcNow.AddMinutes (5));
@@ -273,18 +245,17 @@ public sealed class RefreshLifecycleTests
 		Property ("ImpactSummaryDisplay", "Historical summary");
 		_transport.CompletePoll = true;
 		_transport.Release.TrySetResult (true);
-		Call ("ApplyLocalAvailability", false, cts.Token);
+		Call ("SetOfflineState", "Synthetic failed required API observation");
 		Assert.That (_driver.EnergyValueDisplay, Is.EqualTo ("Solar: 5.0 kWh"));
-		Call ("ApplyLocalAvailability", true, cts.Token);
 		await TestSupport.Complete ((Task)Call ("PollAsync", _client, CancellationToken.None));
 		Assert.That (_driver.EnergyValueDisplay, Is.EqualTo ("Solar: 5.0 kWh"));
 		Assert.That (_driver.ImpactSummaryDisplay, Is.EqualTo ("Historical summary"));
 		}
 
 	[Test]
-	public async Task SlowHistoryCannotDelayLivePublicationOrUndoLaterTransportLoss ()
+	public async Task SlowHistoryCannotDelayLivePublicationOrUndoClearedConfiguration ()
 		{
-		using var cts = LocalAvailability ();
+		using var cts = ConfigureLocal ();
 		var history = new DelayedHistoryHandler ();
 		EnableSyntheticHistory (history);
 		_transport.CompletePoll = true;
@@ -297,40 +268,23 @@ public sealed class RefreshLifecycleTests
 			Assert.That (_driver.TileDisplay, Does.Contain ("0.3 kW"));
 			Assert.That (_driver.OnlineIndicatorIsOnline, Is.True);
 			Assert.That (_driver.ReadyIndicatorIsReady, Is.True);
-			Call ("ApplyLocalAvailability", false, cts.Token);
+			Clear ();
 			}
 		finally { history.Release.TrySetResult (true); }
-		await TestSupport.Complete (poll);
-		Assert.That (_driver.TileDisplay, Is.EqualTo ("Offline"));
+		try { await TestSupport.Complete (poll); } catch (OperationCanceledException) { }
+		Assert.That (_driver.StatusSummary, Is.EqualTo ("Configuration cleared"));
 		Assert.That (_driver.OnlineIndicatorIsOnline, Is.False);
 		Assert.That (_driver.ReadyIndicatorIsReady, Is.False);
 		}
 
-	[Test]
-	public async Task ConsumedRecoveryWakeIsReissuedAfterCommandOwnedPollFinishes ()
-		{
-		using var cts = LocalAvailability (3600);
-		_transport.CompletePoll = true;
-		Task command = (Task)Call ("RunPollAsync", CancellationToken.None);
-		await TestSupport.Complete (_transport.Entered.Task);
-		Call ("ApplyLocalAvailability", false, cts.Token);
-		Call ("ApplyLocalAvailability", true, cts.Token);
-		var wake = (SemaphoreSlim)Field ("_refreshWake");
-		Assert.That (wake.Wait (0), Is.True);
-		await TestSupport.Complete ((Task)Call ("RunPollAsync", CancellationToken.None));
-		Assert.That (Field ("_refreshRequestedWhileBusy"), Is.EqualTo (true));
-		_transport.Release.TrySetResult (true);
-		await TestSupport.Complete (command);
-		Assert.That (wake.CurrentCount, Is.EqualTo (1), "A return wake must survive the busy poll, not wait3600 seconds.");
-		Assert.That (Field ("_refreshRequestedWhileBusy"), Is.EqualTo (false));
-		}
+
 
 
 	[TestCase (true)]
 	[TestCase (false)]
 	public async Task RequestCancellationMustNotTerminateValidRefreshLifetime (bool initial)
 		{
-		using var cts = LocalAvailability (3600);
+		using var cts = ConfigureLocal (3600);
 		_transport.CompletePoll = true;
 		_transport.CancelOnForcedRead = initial ? 1 : 2;
 		_transport.Release.TrySetResult (true);
@@ -380,7 +334,7 @@ public sealed class RefreshLifecycleTests
 	[Test]
 	public async Task ExplicitLifetimeCancellationStopsSleepingRefreshWithoutAnotherRead ()
 		{
-		using var cts = LocalAvailability (3600);
+		using var cts = ConfigureLocal (3600);
 		_transport.CompletePoll = true;
 		_transport.Release.TrySetResult (true);
 		var loop = (Task)Call ("RefreshLoopAsync", cts.Token);
@@ -391,6 +345,122 @@ public sealed class RefreshLifecycleTests
 		await TestSupport.Complete (loop);
 		Assert.That (_transport.Reads, Is.EqualTo (reads));
 		}
+
+ [TestCase("{\"percentage\":75}", 73.6842105263158)]
+ [TestCase("{\"percentage\":0}", -5.26315789473684)]
+ public async Task ForcedFirstDataReadIsIssuedOnceAndUsesLibraryScale(string json,double expected)
+ {
+  _transport.SoePayload=json;_transport.Release.TrySetResult(true);
+  double actual=await TeslaPowerwallDriver.ReadFreshLocalLevelAsync(_client,CancellationToken.None);
+  Assert.That(actual,Is.EqualTo(expected).Within(0.000001));
+  Assert.That(_transport.Reads,Is.EqualTo(1));Assert.That(_transport.ForceReads,Is.EqualTo(1));
+ }
+ [TestCase(null)] [TestCase("null")] [TestCase("{}")] [TestCase("{\"percentage\":\"invalid\"}")] [TestCase("not JSON")]
+ public async Task InvalidFreshBatteryReadingCannotRestoreCachedTile(string payload)
+ {
+  using var cts=ConfigureLocal();_transport.SoePayload=payload ?? "null";_transport.Release.TrySetResult(true);
+  Property("TileDisplay","cached");await TestSupport.Complete((Task)Call("PollAsync",_client,cts.Token));
+  Assert.That(_transport.Reads,Is.EqualTo(1));Assert.That(_driver.TileDisplay,Is.EqualTo("Offline"));
+  Assert.That(_driver.OnlineIndicatorIsOnline,Is.False);
+ }
+ [TestCase(15)] [TestCase(3600)]
+ public async Task NormalRefreshRetainsConfiguredIdleAndMakesNoBackgroundHealthRequests(int interval)
+ {
+  using var cts=ConfigureLocal(interval);_transport.CompletePoll=true;_transport.Release.TrySetResult(true);
+  var loop=(Task)Call("RefreshLoopAsync",cts.Token);
+  try {
+   await TestSupport.Complete(_transport.PollFinished.Task);
+   await Task.Delay(100);int reads=_transport.Reads;
+   await Task.Delay(150);Assert.That(_transport.Reads,Is.EqualTo(reads));
+   Assert.That(_transport.SoeReads,Is.EqualTo(1));
+   Assert.That((int)typeof(TeslaPowerwallDriver).GetProperty("PollIntervalSeconds",Private).GetValue(_driver),Is.EqualTo(interval));
+  }finally{cts.Cancel();await TestSupport.Complete(loop);}
+ }
+ [Test]
+ public async Task WholeLocalCoreBudgetCancelsStalledReadAndNextPollCanRecover()
+ {
+  using var cts=ConfigureLocal();_transport.RespectCancellation=true;
+  var poll=(Task)Call("PollAsync",_client,cts.Token);await TestSupport.Complete(_transport.Entered.Task);
+  Assert.That(await Task.WhenAny(poll,Task.Delay(TimeSpan.FromSeconds(20))),Is.SameAs(poll));await poll;
+  Assert.That(cts.IsCancellationRequested,Is.False);Assert.That(_driver.TileDisplay,Is.EqualTo("Offline"));
+  Assert.That(_transport.Reads,Is.EqualTo(1));
+  _transport.CompletePoll=true;_transport.Release.TrySetResult(true);
+  await TestSupport.Complete((Task)Call("PollAsync",_client,cts.Token));
+  Assert.That(_driver.OnlineIndicatorIsOnline,Is.True);Assert.That(_driver.ReadyIndicatorIsReady,Is.True);
+ }
+
+ [TestCase(15)] [TestCase(60)] [TestCase(3600)]
+ public async Task RepeatedLocalFailuresBackOffAndFreshSuccessResetsConfiguredDelay(int interval)
+ {
+  using var cts=ConfigureLocal(interval);
+  _transport.Fail=true;_transport.Release.TrySetResult(true);
+  int expected=interval;
+  for(int failure=1;failure<=7;failure++)
+  {
+   await TestSupport.Complete((Task)Call("PollAsync",_client,cts.Token));
+   Assert.That((int)typeof(TeslaPowerwallDriver).GetProperty("NextPollDelaySeconds",Private).GetValue(_driver),Is.EqualTo(expected));
+   Assert.That((int)Field("_localPollFailures"),Is.EqualTo(failure),"One failed API poll counts once.");
+   expected=Math.Min(Math.Max(interval,300),expected*2);
+  }
+  Assert.That(_transport.Reads,Is.EqualTo(7),"No independent health requests or cached projections after failed first read.");
+  _transport.Fail=false;_transport.CompletePoll=true;
+  await TestSupport.Complete((Task)Call("PollAsync",_client,cts.Token));
+  Assert.That((int)Field("_localPollFailures"),Is.Zero);
+  Assert.That((int)typeof(TeslaPowerwallDriver).GetProperty("NextPollDelaySeconds",Private).GetValue(_driver),Is.EqualTo(interval));
+ }
+ [Test]
+ public async Task CloudFailureDoesNotChangeCloudCadence()
+ {
+  Set("_refreshIntervalSeconds",300);_transport.Fail=true;_transport.Release.TrySetResult(true);
+  await TestSupport.Complete((Task)Call("PollAsync",_client,CancellationToken.None));
+  Assert.That((int)Field("_localPollFailures"),Is.Zero);
+  Assert.That((int)typeof(TeslaPowerwallDriver).GetProperty("NextPollDelaySeconds",Private).GetValue(_driver),Is.EqualTo(300));
+ }
+ [Test]
+ public async Task SleepingFailureBackoffIsCancellableWithoutAnotherRead()
+ {
+  using var cts=ConfigureLocal(15);_transport.Fail=true;_transport.Release.TrySetResult(true);
+  var loop=(Task)Call("RefreshLoopAsync",cts.Token);
+  try {
+   await TestSupport.Complete(_transport.Entered.Task);await Task.Delay(100);
+   Assert.That((int)Field("_localPollFailures"),Is.EqualTo(1));
+   int reads=_transport.Reads;await Task.Delay(150);Assert.That(_transport.Reads,Is.EqualTo(reads));
+   cts.Cancel();await TestSupport.Complete(loop);Assert.That(_transport.Reads,Is.EqualTo(reads));
+  }finally{cts.Cancel();await TestSupport.Complete(loop);}
+ }
+ private void EnableSyntheticControl(CancellationTokenSource cts)
+ {
+  var settings=((LocalConnectionSettings)Field("_local")).Merge(new Dictionary<string,Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue?>
+   {["AllowLocalControl"]=new Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue(true)},new Dictionary<string,string>());
+  Set("_local",settings);Set("_refreshCancellationTokenSource",cts);
+ }
+ [Test]
+ public async Task CommandWaitsForWholePollAndLifetimeCancellationPreventsAction()
+ {
+  using var cts=ConfigureLocal();EnableSyntheticControl(cts);
+  var poll=(Task)Call("RunPollAsync",cts.Token);await TestSupport.Complete(_transport.Entered.Task);
+  int actions=0;Func<Powerwall,CancellationToken,Task> action=(client,token)=>{actions++;return Task.CompletedTask;};
+  var command=(Task)Call("ExecuteControlAsync",action,(Action)(()=>{}),"synthetic command");
+  await Task.Delay(100);Assert.That(actions,Is.Zero);Assert.That(command.IsCompleted,Is.False);
+  cts.Cancel();await TestSupport.Complete(command);_transport.Release.TrySetResult(true);
+  await Assert.CatchAsync<OperationCanceledException>(async()=>await TestSupport.Complete(poll));
+  Assert.That(actions,Is.Zero);Assert.That(((SemaphoreSlim)Field("_connectionGate")).CurrentCount,Is.EqualTo(1));
+ }
+ [Test]
+ public async Task PollWaitsForWholeCommandAndActionReceivesDriverLifetimeToken()
+ {
+  using var cts=ConfigureLocal();EnableSyntheticControl(cts);
+  var entered=new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+  CancellationToken observed=default;
+  Func<Powerwall,CancellationToken,Task> action=async(client,token)=>{observed=token;entered.TrySetResult(true);await Task.Delay(Timeout.Infinite,token);};
+  var command=(Task)Call("ExecuteControlAsync",action,(Action)(()=>{}),"synthetic command");
+  await TestSupport.Complete(entered.Task);var poll=(Task)Call("RunPollAsync",cts.Token);
+  await Task.Delay(100);Assert.That(_transport.Reads,Is.Zero);Assert.That(observed,Is.EqualTo(cts.Token));
+  cts.Cancel();await TestSupport.Complete(command);
+  await Assert.CatchAsync<OperationCanceledException>(async()=>await TestSupport.Complete(poll));
+  Assert.That(_transport.Reads,Is.Zero);Assert.That((int)Field("_refreshInProgress"),Is.Zero);
+  Assert.That(((SemaphoreSlim)Field("_connectionGate")).CurrentCount,Is.EqualTo(1));
+ }
 
 	private sealed class TimeoutHandler : HttpMessageHandler
 		{
@@ -442,24 +512,28 @@ public sealed class RefreshLifecycleTests
 		internal readonly TaskCompletionSource<bool> Entered = new (TaskCreationOptions.RunContinuationsAsynchronously);
 		internal readonly TaskCompletionSource<bool> Release = new (TaskCreationOptions.RunContinuationsAsynchronously);
 		internal bool Fail;
+        internal bool RespectCancellation;
 		internal bool CompletePoll;
 		internal int ForceReads;
 		internal int CancelOnForcedRead;
 		internal readonly TaskCompletionSource<bool> RequestCancelled = new (TaskCreationOptions.RunContinuationsAsynchronously);
 		internal TaskCompletionSource<bool> PollFinished = new (TaskCreationOptions.RunContinuationsAsynchronously);
 		internal int Reads;
+        internal int SoeReads;
+        internal string SoePayload;
 		public override async Task<string> PollAsync (string api, bool force = false, bool recursive = false, CancellationToken cancellationToken = default)
 			{
 			Reads++;
+            if(api == "/api/system_status/soe") SoeReads++;
 			if (force) { ForceReads++; if (ForceReads == CancelOnForcedRead) { RequestCancelled.TrySetResult (true); throw new TaskCanceledException ("Synthetic request timeout while lifetime remains active"); } }
 			if (!CompletePoll) Assert.That (api, Is.EqualTo ("/api/system_status/soe"));
 			Entered.TrySetResult (true);
-			await Release.Task;
+            if(RespectCancellation && !Release.Task.IsCompleted) { var cancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously); using var registration=cancellationToken.Register(()=>cancelled.TrySetCanceled()); await await Task.WhenAny(Release.Task,cancelled.Task); } else await Release.Task;
 			if (Fail) throw new PowerwallException ("Synthetic late failure");
 			if (api == "/api/operation") PollFinished.TrySetResult (true);
 			return api switch
 				{
-				"/api/system_status/soe" => "{\"percentage\":75}",
+				"/api/system_status/soe" => SoePayload ?? "{\"percentage\":75}",
 				"/api/meters/aggregates" => "{\"site\":{\"instant_power\":100},\"solar\":{\"instant_power\":200},\"battery\":{\"instant_power\":0},\"load\":{\"instant_power\":300}}",
 				"/api/system_status/grid_status" => "{\"grid_status\":\"SystemGridConnected\"}",
 				"/api/operation" => "{\"backup_reserve_percent\":20,\"real_mode\":\"self_consumption\"}",

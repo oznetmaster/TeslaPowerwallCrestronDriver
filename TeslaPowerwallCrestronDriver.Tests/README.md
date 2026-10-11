@@ -27,3 +27,9 @@ Gateway data is less complete than signed TEDAPI on Powerwall 3. Missing site na
 Keep installed-driver Configure-screen and rendered UI acceptance separate. Test instances are temporary and do not replace the installed energy driver.
 
 Rendered Android acceptance is implemented in [AndroidTests](../TeslaPowerwallCrestronDriver.AndroidTests/README.md), using the published TestAdapter 2.3.0 helpers. It is a separate, explicitly selected workflow stage. HPNeil is the preferred existing emulator host; the primary Windows computer can also run the fixtures. Mac testing is on hold.
+
+## API-based local availability regressions
+
+`RefreshLifecycleTests` covers one forced required battery read, malformed/cancelled responses, whole-core timeout, fresh API recovery, stale-client/lifetime fencing, configured healthy cadence, bounded local failure backoff and reset, unchanged cloud cadence, nonoverlapping polls, and command/poll session serialization. Synthetic control delegates perform no device operation.
+
+`LocalAvailabilityTests` uses the published library with a synthetic HTTP handler to verify required-battery cache reuse and four HTTP requests for an already-authenticated Gateway core poll (SOE, meter aggregates, grid status, operation; reserve and mode share operation). Authentication, optional history, Signed LAN envelopes, HTTP connection pooling and actual Mono/processor resource cost are separate from this count. Offline tests establish behavior, not a safe polling interval or a general 15-second physical-loss detection bound.
