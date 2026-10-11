@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## Unreleased
+
+- Correct failed-poll feedback so the Home tile explicitly shows Offline and clears stale readings.
+- Detect loss of the configured local connection independently of the data polling interval; restore online feedback only after a fresh API observation and successful data poll.
+- Prevent delayed polling and cancelled connection monitors from overwriting offline or reconfigured state.
+
 ## 2.0.0 — 2026-10-08
 
 - **Reconfiguration required:** update the existing Entity V2 driver in place, then complete its new configuration dialogs. Removing and re-adding the driver is not required. Configuration retention is not guaranteed; have settings and credentials ready to re-enter.

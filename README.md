@@ -46,7 +46,7 @@ The driver connects over your home network using Ethernet or normal Powerwall Wi
 - **Gateway** — customer-authenticated local HTTPS reads and supported reserve/mode controls. Available telemetry depends on the device.
 - **Signed LAN** — Powerwall 3 TEDAPI over a hostname or IP address, using the local customer password and a separately enrolled RSA-4096 driver key. Follow [local provisioning](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.LocalSetup/README.md).
 
-Local status defaults to a configurable 15-second delay between completed polls. Settings changes require **Allow Local Setting Changes**. Energy and Impact pages require explicit **Use Cloud History with Local Access**, separate cloud credentials and the numeric ID of the same physical site. Cloud failure does not switch live monitoring away from local access. Storm Watch is available through Owner cloud mode only.
+Local status defaults to a configurable 15-second delay between completed polls. Settings changes require **Allow Local Setting Changes**. Energy and Impact pages require explicit **Use Cloud History with Local Access**, separate cloud credentials and the numeric ID of the same physical site. Cloud failure does not switch live monitoring away from local access. An independent local transport check uses a 2-second delay and a 3-second connection deadline, regardless of the data polling interval. Transport loss marks the Home tile **Offline**; a returning socket only wakes the normal poll. Online feedback returns after an uncached local API read and a successful data poll. Runtime scheduling and Crestron Home UI propagation still require live timing validation. Storm Watch is available through Owner cloud mode only.
 
 See the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) repository for the underlying library's full roadmap and known issues.
 
@@ -161,7 +161,7 @@ The major version marks this required configuration step. An automatic, unattend
 | Local Password | Local customer password for Gateway/Signed LAN. Masked and persistent. |
 | Registered Local Signing Key | Signed LAN only: the registered RSA-4096 private key exported by the independent provisioning tool. Masked and persistent. |
 | Allow Local Setting Changes | Default false. Enables supported controls for Gateway/Signed LAN. |
-| Local Polling Interval Seconds | 15–3600 seconds; default 15. The same interval governs the local response cache. Slow responses extend the gap; requests do not overlap. |
+| Local Polling Interval Seconds | 15–3600 seconds; default 15. The same interval governs the local response cache. Slow responses extend the data gap; data polls do not overlap. The separate transport check does not change this data/cache interval. |
 | Use Cloud History with Local Access | Default false. Requires cloud credentials and the numeric ID of this exact site. Local-only monitoring never contacts the cloud. |
 
 ⚠️ **Changing the Client ID invalidates the cached refresh token.** Owner API and Fleet API refresh tokens are not interchangeable, and Fleet API refresh tokens are themselves scoped to the application (Client ID) that requested them. Adding, removing, or changing the Client ID therefore requires entering a new, matching refresh token in the same configuration update — the driver will reject the update with a validation error on the Tesla Refresh Token field if one isn't supplied.
