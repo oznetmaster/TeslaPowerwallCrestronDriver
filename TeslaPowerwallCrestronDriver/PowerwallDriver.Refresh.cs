@@ -385,9 +385,11 @@ public sealed partial class TeslaPowerwallDriver
    {
    using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
    deadline.CancelAfter(LocalCorePollTimeout);
-   try { succeeded = await PollCoreAsync(client, deadline.Token).ConfigureAwait(false); }
-   catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested)
+   var diagnostics=new LocalPollDiagnostics(cancellationToken,deadline.Token,LogWarning);
+   try { succeeded = await PollCoreAsync(client, deadline.Token, diagnostics).ConfigureAwait(false); }
+   catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested)
     {
+    diagnostics.Report(ex);
     lock (_stateLock)
      {
      EnsureCurrentClient(client, cancellationToken);
@@ -396,8 +398,9 @@ public sealed partial class TeslaPowerwallDriver
      }
     return;
     }
-   catch (Exception)
+   catch (Exception ex)
     {
+    diagnostics.Report(ex);
     EnsureCurrentClient(client, cancellationToken);
     RecordLocalPollFailure(cancellationToken);
     throw;
@@ -409,24 +412,31 @@ public sealed partial class TeslaPowerwallDriver
   if (succeeded) await RefreshHistoryIfDueAsync(client, cancellationToken).ConfigureAwait(false);
   }
 
-	private async Task<bool> PollCoreAsync (TeslaPowerwallLibrary.Powerwall client, CancellationToken cancellationToken)
+	private async Task<bool> PollCoreAsync (TeslaPowerwallLibrary.Powerwall client, CancellationToken cancellationToken, LocalPollDiagnostics diagnostics = null)
 		{
 		try
 			{
+			diagnostics?.Begin(LocalPollStage.BatteryTelemetry);
 			double? level = IsLocal
 				? await ReadFreshLocalLevelAsync (client, cancellationToken).ConfigureAwait (false)
 				: await client.LevelAsync (scale: true, cancellationToken: cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
+			diagnostics?.Begin(LocalPollStage.PowerProjection);
 			PowerReadings power = await client.GetPowerReadingsAsync (cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
+			diagnostics?.Begin(LocalPollStage.GridProjection);
 			GridStatus? gridStatus = await client.GridStatusAsync (cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
+			diagnostics?.Begin(LocalPollStage.ReserveConfiguration);
 			double? reserve = await client.GetReserveAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
+			diagnostics?.Begin(LocalPollStage.ModeProjection);
 			string mode = await client.GetModeAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
+			diagnostics?.Begin(LocalPollStage.GridChargingProjection);
 			bool? gridCharging = !SupportsGridSettings ? null : await client.GetGridChargingAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
+			diagnostics?.Begin(LocalPollStage.GridExportProjection);
 			string gridExport = !SupportsGridSettings ? null : await client.GetGridExportAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 			EnsureCurrentClient (client, cancellationToken);
 			// Storm Watch is not supported by the Tesla Fleet API (the library throws PowerwallNotSupportedException
@@ -436,6 +446,7 @@ public sealed partial class TeslaPowerwallDriver
 				: await client.GetStormWatchAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 				EnsureCurrentClient (client, cancellationToken);
 
+			diagnostics?.Begin(LocalPollStage.Publication);
 			lock (_stateLock)
 				{
 				EnsureCurrentClient (client, cancellationToken);
@@ -449,6 +460,7 @@ public sealed partial class TeslaPowerwallDriver
 			}
 		catch (PowerwallException ex)
 			{
+				diagnostics?.Report(ex);
 			lock (_stateLock)
 				{
 					EnsureCurrentClient (client, cancellationToken);

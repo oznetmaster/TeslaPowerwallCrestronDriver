@@ -6,6 +6,8 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 ## Unreleased
 
+- Record local poll failure stage, elapsed time and cancellation origin without adding requests or changing polling behavior.
+
 - Publish explicit Offline feedback after a failed required API observation; recover only through a fresh successful API/data poll.
 - Remove the separate recurring TCP connection probes. Reuse the required battery read and retain serialized polling and stateful commands.
 - Bound the whole local core poll by the existing 15-second timeout and back off repeated local failures; reset configured cadence on success.
