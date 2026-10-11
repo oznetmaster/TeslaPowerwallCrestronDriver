@@ -325,6 +325,85 @@ public sealed class RefreshLifecycleTests
 		Assert.That (Field ("_refreshRequestedWhileBusy"), Is.EqualTo (false));
 		}
 
+
+	[TestCase (true)]
+	[TestCase (false)]
+	public async Task RequestCancellationMustNotTerminateValidRefreshLifetime (bool initial)
+		{
+		using var cts = LocalAvailability (3600);
+		_transport.CompletePoll = true;
+		_transport.CancelOnForcedRead = initial ? 1 : 2;
+		_transport.Release.TrySetResult (true);
+		var loop = (Task)Call ("RefreshLoopAsync", cts.Token);
+		try
+			{
+			if (!initial)
+				{
+				await TestSupport.Complete (_transport.PollFinished.Task);
+				((SemaphoreSlim)Field ("_refreshWake")).Release ();
+				}
+			await TestSupport.Complete (_transport.RequestCancelled.Task);
+			await Task.Delay (100);
+			Assert.That (cts.IsCancellationRequested, Is.False);
+			Assert.That (loop.IsCompleted, Is.False, "A request-owned cancellation must not kill the driver lifetime.");
+			Assert.That (_driver.ReadyIndicatorIsReady, Is.False);
+			Assert.That (_driver.TileDisplay, Is.EqualTo ("Offline"));
+			_transport.PollFinished = new TaskCompletionSource<bool> (TaskCreationOptions.RunContinuationsAsynchronously);
+			((SemaphoreSlim)Field ("_refreshWake")).Release ();
+			await TestSupport.Complete (_transport.PollFinished.Task);
+			await Task.Delay (100);
+			Assert.That (_driver.ReadyIndicatorIsReady, Is.True);
+			Assert.That (_driver.OnlineIndicatorIsOnline, Is.True);
+			Assert.That (_transport.ForceReads, Is.EqualTo (initial ? 2 : 3));
+			}
+		finally { cts.Cancel (); await TestSupport.Complete (loop); }
+		}
+
+
+	[Test]
+	public async Task PinnedSignedLanClientPropagatesRequestTimeoutWithValidCallerToken ()
+		{
+		using var key = System.Security.Cryptography.RSA.Create (4096);
+		var options = new PowerwallOptions { Host = "192.0.2.1", Password = "synthetic", LocalSigningKey = key, LocalProtocol = TeslaPowerwallLibrary.PowerwallLocalProtocol.TedapiSigned, Timeout = TimeSpan.FromMilliseconds (50) };
+		var type = typeof (Powerwall).Assembly.GetType ("TeslaPowerwallLibrary.Tedapi.PowerwallTedapiClient");
+		var handler = new TimeoutHandler ();
+		using var transport = (TeslaPowerwallLibrary.Tedapi.PowerwallTedapiClient)Activator.CreateInstance (type, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { options, handler, null }, null);
+		type.GetField ("_din", Private).SetValue (transport, "1234567-00-A--SYNTHETIC");
+		using var client = new Powerwall (options);
+		typeof (Powerwall).GetField ("_client", Private).SetValue (client, transport);
+		using var cts = new CancellationTokenSource ();
+		await Assert.CatchAsync<OperationCanceledException> (async () => await client.IsConnectedAsync (cts.Token));
+		Assert.That (cts.IsCancellationRequested, Is.False);
+		Assert.That (handler.Reads, Is.EqualTo (1));
+		}
+
+	[Test]
+	public async Task ExplicitLifetimeCancellationStopsSleepingRefreshWithoutAnotherRead ()
+		{
+		using var cts = LocalAvailability (3600);
+		_transport.CompletePoll = true;
+		_transport.Release.TrySetResult (true);
+		var loop = (Task)Call ("RefreshLoopAsync", cts.Token);
+		await TestSupport.Complete (_transport.PollFinished.Task);
+		await Task.Delay (50);
+		int reads = _transport.Reads;
+		cts.Cancel ();
+		await TestSupport.Complete (loop);
+		Assert.That (_transport.Reads, Is.EqualTo (reads));
+		}
+
+	private sealed class TimeoutHandler : HttpMessageHandler
+		{
+		internal int Reads;
+		protected override async Task<HttpResponseMessage> SendAsync (HttpRequestMessage request, CancellationToken cancellationToken)
+			{
+			Assert.That (request.RequestUri.Host, Is.EqualTo ("192.0.2.1"));
+			Reads++;
+			await Task.Delay (Timeout.Infinite, cancellationToken);
+			throw new AssertionException ("Synthetic stalled request unexpectedly completed");
+			}
+		}
+
 	private void EnableSyntheticHistory (DelayedHistoryHandler handler)
 		{
 		var settings = ((LocalConnectionSettings)Field ("_local")).Merge (new Dictionary<string, Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue?>
@@ -365,15 +444,19 @@ public sealed class RefreshLifecycleTests
 		internal bool Fail;
 		internal bool CompletePoll;
 		internal int ForceReads;
+		internal int CancelOnForcedRead;
+		internal readonly TaskCompletionSource<bool> RequestCancelled = new (TaskCreationOptions.RunContinuationsAsynchronously);
+		internal TaskCompletionSource<bool> PollFinished = new (TaskCreationOptions.RunContinuationsAsynchronously);
 		internal int Reads;
 		public override async Task<string> PollAsync (string api, bool force = false, bool recursive = false, CancellationToken cancellationToken = default)
 			{
 			Reads++;
-			if (force) ForceReads++;
+			if (force) { ForceReads++; if (ForceReads == CancelOnForcedRead) { RequestCancelled.TrySetResult (true); throw new TaskCanceledException ("Synthetic request timeout while lifetime remains active"); } }
 			if (!CompletePoll) Assert.That (api, Is.EqualTo ("/api/system_status/soe"));
 			Entered.TrySetResult (true);
 			await Release.Task;
 			if (Fail) throw new PowerwallException ("Synthetic late failure");
+			if (api == "/api/operation") PollFinished.TrySetResult (true);
 			return api switch
 				{
 				"/api/system_status/soe" => "{\"percentage\":75}",

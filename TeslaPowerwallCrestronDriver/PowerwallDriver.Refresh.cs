@@ -118,7 +118,7 @@ public sealed partial class TeslaPowerwallDriver
 			DebugLog ("RefreshLoop: starting initial connect and refresh.");
 			await RunPollAsync (cancellationToken).ConfigureAwait (false);
 			}
-		catch (OperationCanceledException)
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 			{
 			return;
 			}
@@ -148,7 +148,7 @@ public sealed partial class TeslaPowerwallDriver
 				DebugLog ("RefreshLoop: starting scheduled refresh.");
 				await RunPollAsync (cancellationToken).ConfigureAwait (false);
 				}
-			catch (OperationCanceledException)
+			catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 				{
 				break;
 				}

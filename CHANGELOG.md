@@ -6,6 +6,8 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 ## Unreleased
 
+- Keep background polling active after a request timeout so fresh successful API reads can restore online feedback without restarting the driver.
+
 - Correct failed-poll feedback so the Home tile explicitly shows Offline and clears stale readings.
 - Detect loss of the configured local connection independently of the data polling interval; restore online feedback only after a fresh API observation and successful data poll.
 - Prevent delayed polling and cancelled connection monitors from overwriting offline or reconfigured state.
