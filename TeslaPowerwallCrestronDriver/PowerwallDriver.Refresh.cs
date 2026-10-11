@@ -49,6 +49,7 @@ public sealed partial class TeslaPowerwallDriver
 				_localAvailabilityRevision++;
 				_localTransportUnavailable = false;
 				_localTransportReachable = null;
+				_refreshRequestedWhileBusy = false;
 				_localAvailabilityToken = token;
 				}
 			while (_refreshWake.Wait (0)) { }
@@ -168,6 +169,14 @@ public sealed partial class TeslaPowerwallDriver
 		if (System.Threading.Interlocked.CompareExchange (ref _refreshInProgress, 1, 0) != 0)
 			{
 			DebugLog ("RunPollAsync: refresh already in progress; skipping new request.");
+			lock (_stateLock)
+				{
+				if (IsLocal && _localTransportUnavailable && _localTransportReachable == true)
+					{
+					if (_refreshInProgress != 0) _refreshRequestedWhileBusy = true;
+					else if (_refreshWake.CurrentCount == 0) _refreshWake.Release ();
+					}
+				}
 			return;
 			}
 
@@ -188,7 +197,15 @@ public sealed partial class TeslaPowerwallDriver
 		finally
 			{
 			DebugLog ("RunPollAsync: leaving refresh execution.");
-			System.Threading.Interlocked.Exchange (ref _refreshInProgress, 0);
+			lock (_stateLock)
+				{
+				System.Threading.Interlocked.Exchange (ref _refreshInProgress, 0);
+				if (_refreshRequestedWhileBusy)
+					{
+					_refreshRequestedWhileBusy = false;
+					if (!cancellationToken.IsCancellationRequested && _refreshWake.CurrentCount == 0) _refreshWake.Release ();
+					}
+				}
 			}
 		}
 
@@ -417,7 +434,6 @@ public sealed partial class TeslaPowerwallDriver
 				: await client.GetStormWatchAsync (cancellationToken: cancellationToken).ConfigureAwait (false);
 				EnsureCurrentClient (client, cancellationToken);
 
-			await RefreshHistoryIfDueAsync (client, cancellationToken).ConfigureAwait (false);
 			lock (_stateLock)
 				{
 				EnsureCurrentClient (client, cancellationToken);
@@ -428,6 +444,8 @@ public sealed partial class TeslaPowerwallDriver
 				ReadyIndicatorIsReady = true;
 				StatusSummary = BuildUpdatedSummary ();
 				}
+			// Optional cloud history must not delay local live feedback or republish online.
+			await RefreshHistoryIfDueAsync (client, cancellationToken).ConfigureAwait (false);
 			}
 		catch (PowerwallException ex)
 			{
@@ -578,21 +596,12 @@ public sealed partial class TeslaPowerwallDriver
 
 	private void SetOfflineState (string status)
 		{
-		SetUnavailableState (status);
-		TileDisplay = "Offline";
+		SetLiveUnavailableState (status, "Offline");
 		}
 
 	private void SetUnavailableState (string status)
 		{
-		TileDisplay = "--";
-		TileIcon = "icBatteryLow";
-		OperatingSettingsVisible = false;
-		BatteryLevelDisplay = "--";
-		OperationModeDisplay = "--";
-		SolarPowerDisplay = "--";
-		GridPowerDisplay = "--";
-		LoadPowerDisplay = "--";
-		GridExportModeDisplay = "--";
+		SetLiveUnavailableState (status, "--");
 		EnergyPeriodLabel = "--";
 		EnergyValueDisplay = "--";
 		EnergyDetailDisplay = "--";
@@ -602,10 +611,23 @@ public sealed partial class TeslaPowerwallDriver
 		ImpactHomeUsageDisplay = "--";
 		ImpactGridUsageDisplay = "--";
 		ImpactSummaryDisplay = "--";
+		TryPublishUiDefinition ();
+		}
+
+	private void SetLiveUnavailableState (string status, string tile)
+		{
+		TileDisplay = tile;
+		TileIcon = "icBatteryLow";
+		OperatingSettingsVisible = false;
+		BatteryLevelDisplay = "--";
+		OperationModeDisplay = "--";
+		SolarPowerDisplay = "--";
+		GridPowerDisplay = "--";
+		LoadPowerDisplay = "--";
+		GridExportModeDisplay = "--";
 		StatusSummary = status;
 		OnlineIndicatorIsOnline = false;
 		ReadyIndicatorIsReady = false;
-		TryPublishUiDefinition ();
 		}
 
 	// Detects one-shot state transitions from the latest poll and raises the corresponding Entity Model

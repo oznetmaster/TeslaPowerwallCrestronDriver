@@ -4,6 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Net;
+using System.Net.Http;
+using TeslaPowerwallLibrary.Cloud;
 using System.Threading;
 using System.Threading.Tasks;
 using Crestron.DeviceDrivers.EntityModel;
@@ -256,6 +259,102 @@ public sealed class RefreshLifecycleTests
 		Assert.That (_transport.ForceReads, Is.EqualTo (1));
 		Assert.That (_driver.TileDisplay, Is.EqualTo ("Offline"));
 		Assert.That (_driver.ReadyIndicatorIsReady, Is.False);
+		}
+
+
+	[Test]
+	public async Task ConnectionLossPreservesCachedHistoricalValuesAcrossRecovery ()
+		{
+		using var cts = LocalAvailability ();
+		EnableSyntheticHistory (new DelayedHistoryHandler ());
+		Set ("_lastHistorySelection", (string)Call ("HistorySelection"));
+		Set ("_nextHistoryRefresh", DateTimeOffset.UtcNow.AddMinutes (5));
+		Property ("EnergyValueDisplay", "Solar: 5.0 kWh");
+		Property ("ImpactSummaryDisplay", "Historical summary");
+		_transport.CompletePoll = true;
+		_transport.Release.TrySetResult (true);
+		Call ("ApplyLocalAvailability", false, cts.Token);
+		Assert.That (_driver.EnergyValueDisplay, Is.EqualTo ("Solar: 5.0 kWh"));
+		Call ("ApplyLocalAvailability", true, cts.Token);
+		await TestSupport.Complete ((Task)Call ("PollAsync", _client, CancellationToken.None));
+		Assert.That (_driver.EnergyValueDisplay, Is.EqualTo ("Solar: 5.0 kWh"));
+		Assert.That (_driver.ImpactSummaryDisplay, Is.EqualTo ("Historical summary"));
+		}
+
+	[Test]
+	public async Task SlowHistoryCannotDelayLivePublicationOrUndoLaterTransportLoss ()
+		{
+		using var cts = LocalAvailability ();
+		var history = new DelayedHistoryHandler ();
+		EnableSyntheticHistory (history);
+		_transport.CompletePoll = true;
+		_transport.Release.TrySetResult (true);
+		Task poll = (Task)Call ("PollAsync", _client, CancellationToken.None);
+		try
+			{
+			await TestSupport.Complete (history.Entered.Task);
+			Assert.That (poll.IsCompleted, Is.False, "Actual optional history read must still be blocked.");
+			Assert.That (_driver.TileDisplay, Does.Contain ("0.3 kW"));
+			Assert.That (_driver.OnlineIndicatorIsOnline, Is.True);
+			Assert.That (_driver.ReadyIndicatorIsReady, Is.True);
+			Call ("ApplyLocalAvailability", false, cts.Token);
+			}
+		finally { history.Release.TrySetResult (true); }
+		await TestSupport.Complete (poll);
+		Assert.That (_driver.TileDisplay, Is.EqualTo ("Offline"));
+		Assert.That (_driver.OnlineIndicatorIsOnline, Is.False);
+		Assert.That (_driver.ReadyIndicatorIsReady, Is.False);
+		}
+
+	[Test]
+	public async Task ConsumedRecoveryWakeIsReissuedAfterCommandOwnedPollFinishes ()
+		{
+		using var cts = LocalAvailability (3600);
+		_transport.CompletePoll = true;
+		Task command = (Task)Call ("RunPollAsync", CancellationToken.None);
+		await TestSupport.Complete (_transport.Entered.Task);
+		Call ("ApplyLocalAvailability", false, cts.Token);
+		Call ("ApplyLocalAvailability", true, cts.Token);
+		var wake = (SemaphoreSlim)Field ("_refreshWake");
+		Assert.That (wake.Wait (0), Is.True);
+		await TestSupport.Complete ((Task)Call ("RunPollAsync", CancellationToken.None));
+		Assert.That (Field ("_refreshRequestedWhileBusy"), Is.EqualTo (true));
+		_transport.Release.TrySetResult (true);
+		await TestSupport.Complete (command);
+		Assert.That (wake.CurrentCount, Is.EqualTo (1), "A return wake must survive the busy poll, not wait3600 seconds.");
+		Assert.That (Field ("_refreshRequestedWhileBusy"), Is.EqualTo (false));
+		}
+
+	private void EnableSyntheticHistory (DelayedHistoryHandler handler)
+		{
+		var settings = ((LocalConnectionSettings)Field ("_local")).Merge (new Dictionary<string, Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue?>
+			{ ["UseCloudHistory"] = new Crestron.DeviceDrivers.EntityModel.Data.DriverEntityValue (true) }, new Dictionary<string, string> ());
+		Set ("_local", settings); Set ("_siteId", "1"); Set ("_refreshToken", "synthetic");
+		var cloud = new PowerwallCloudClient ("synthetic@example.invalid", 15, TimeSpan.FromSeconds (15), accessToken: "synthetic", siteId: "1", noCloudTokenPersistence: true);
+		Type connectionType = typeof (Powerwall).Assembly.GetType ("TeslaPowerwallLibrary.Cloud.TeslaCloudConnection");
+		object connection = Activator.CreateInstance (connectionType, new object[] { "synthetic", null, TimeSpan.FromSeconds (15), null });
+		var httpField = connectionType.GetField ("_httpClient", Private);
+		((HttpClient)httpField.GetValue (connection)).Dispose ();
+		httpField.SetValue (connection, new HttpClient (handler));
+		typeof (PowerwallCloudClient).GetField ("_connection", Private).SetValue (cloud, connection);
+		typeof (PowerwallCloudClient).GetField ("_resolvedSiteId", Private).SetValue (cloud, "1");
+		var history = new Powerwall (new PowerwallOptions { CloudMode = true, RefreshToken = "synthetic", NoCloudTokenPersistence = true });
+		typeof (Powerwall).GetField ("_client", Private).SetValue (history, cloud);
+		Set ("_historyClient", history);
+		}
+
+	private sealed class DelayedHistoryHandler : HttpMessageHandler
+		{
+		internal readonly TaskCompletionSource<bool> Entered = new (TaskCreationOptions.RunContinuationsAsynchronously);
+		internal readonly TaskCompletionSource<bool> Release = new (TaskCreationOptions.RunContinuationsAsynchronously);
+		protected override async Task<HttpResponseMessage> SendAsync (HttpRequestMessage request, CancellationToken cancellationToken)
+			{
+			Assert.That (request.Method, Is.EqualTo (HttpMethod.Get));
+			Assert.That (request.RequestUri.AbsolutePath, Does.Contain ("calendar_history"));
+			Entered.TrySetResult (true);
+			await Release.Task;
+			return new HttpResponseMessage (HttpStatusCode.OK) { Content = new StringContent ("{\"response\":{\"time_series\":[]}}") };
+			}
 		}
 
 	private sealed class DelayedClient : PowerwallClientBase

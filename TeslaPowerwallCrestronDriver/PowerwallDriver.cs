@@ -61,6 +61,7 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 
 	private CancellationTokenSource _refreshCancellationTokenSource;
 	private int _refreshInProgress;
+	private bool _refreshRequestedWhileBusy;
 	private readonly SemaphoreSlim _refreshWake = new (0, 1);
 	private long _localAvailabilityRevision;
 	private bool _localTransportUnavailable;
