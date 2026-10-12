@@ -13,15 +13,14 @@ internal sealed class LocalPollDiagnostics
  private readonly Stopwatch _core=Stopwatch.StartNew();
  private readonly Stopwatch _stage=Stopwatch.StartNew();
  private readonly CancellationToken _lifetime;
- private readonly CancellationToken _deadline;
  private readonly Action<string> _write;
  private LocalPollStage _current=LocalPollStage.CoreEntry;
- internal LocalPollDiagnostics(CancellationToken lifetime,CancellationToken deadline,Action<string> write)
- { _lifetime=lifetime;_deadline=deadline;_write=write; }
+ internal LocalPollDiagnostics(CancellationToken lifetime,Action<string> write)
+ { _lifetime=lifetime;_write=write; }
  internal void Begin(LocalPollStage stage) { _current=stage;_stage.Restart(); }
  internal string Describe(Exception error)
  {
-  string origin=_lifetime.IsCancellationRequested?"lifetime":_deadline.IsCancellationRequested?"whole-core-deadline":error is OperationCanceledException?"request-or-operation":"none";
+  string origin=_lifetime.IsCancellationRequested?"lifetime":error is OperationCanceledException?"request-or-operation":"none";
   return string.Format(CultureInfo.InvariantCulture,"Local poll diagnostic: stage={0}; coreMs={1:F1}; stageMs={2:F1}; exceptionType={3}; cancellation={4}",_current,_core.Elapsed.TotalMilliseconds,_stage.Elapsed.TotalMilliseconds,error.GetType().FullName,origin);
  }
  internal void Report(Exception error)

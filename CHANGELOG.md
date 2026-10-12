@@ -6,11 +6,11 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 ## Unreleased
 
-- Record local poll failure stage, elapsed time and cancellation origin without adding requests or changing polling behavior.
+- Record local poll failure stage, elapsed time and request/lifetime cancellation origin without adding requests.
 
 - Publish explicit Offline feedback after a failed required API observation; recover only through a fresh successful API/data poll.
 - Remove the separate recurring TCP connection probes. Reuse the required battery read and retain serialized polling and stateful commands.
-- Bound the whole local core poll by the existing 15-second timeout and back off repeated local failures; reset configured cadence on success.
+- Retain the 15-second timeout for each API request instead of cancelling individually valid sequential reads after a shared 15-second whole-poll deadline. Back off repeated local failures and reset configured cadence on success.
 - Pass driver lifetime cancellation into control requests and reject updates from superseded clients.
 - Preserve configured cloud/history cadence and document that default polling is not a universal processor resource or 15-second physical-loss guarantee.
 

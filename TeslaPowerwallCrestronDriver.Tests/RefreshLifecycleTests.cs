@@ -377,16 +377,16 @@ public sealed class RefreshLifecycleTests
   }finally{cts.Cancel();await TestSupport.Complete(loop);}
  }
  [Test]
- public async Task WholeLocalCoreBudgetCancelsStalledReadAndNextPollCanRecover()
+ public async Task LifetimeCancellationStopsStalledRequiredReadWithoutPublishing()
  {
   using var cts=ConfigureLocal();_transport.RespectCancellation=true;
-  var poll=(Task)Call("PollAsync",_client,cts.Token);await TestSupport.Complete(_transport.Entered.Task);
-  Assert.That(await Task.WhenAny(poll,Task.Delay(TimeSpan.FromSeconds(20))),Is.SameAs(poll));await poll;
-  Assert.That(cts.IsCancellationRequested,Is.False);Assert.That(_driver.TileDisplay,Is.EqualTo("Offline"));
+  var poll=(Task)Call("RunPollAsync",cts.Token);await TestSupport.Complete(_transport.Entered.Task);
+  cts.Cancel();
+  await Assert.CatchAsync<OperationCanceledException>(async()=>await TestSupport.Complete(poll));
+  Assert.That(_driver.ReadyIndicatorIsReady,Is.False);
   Assert.That(_transport.Reads,Is.EqualTo(1));
-  _transport.CompletePoll=true;_transport.Release.TrySetResult(true);
-  await TestSupport.Complete((Task)Call("PollAsync",_client,cts.Token));
-  Assert.That(_driver.OnlineIndicatorIsOnline,Is.True);Assert.That(_driver.ReadyIndicatorIsReady,Is.True);
+  Assert.That((int)Field("_refreshInProgress"),Is.Zero);
+  Assert.That(((SemaphoreSlim)Field("_connectionGate")).CurrentCount,Is.EqualTo(1));
  }
 
  [TestCase(15)] [TestCase(60)] [TestCase(3600)]

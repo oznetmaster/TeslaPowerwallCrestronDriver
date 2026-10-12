@@ -9,9 +9,6 @@ using TeslaPowerwallLibrary.Models;
 namespace TeslaPowerwall.CrestronDriver;
 public sealed partial class TeslaPowerwallDriver
 {
- // Use the existing local request timeout as one whole core-poll budget instead
- // of allowing every sequential data read to consume another fifteen seconds.
- internal static readonly TimeSpan LocalCorePollTimeout = TimeSpan.FromSeconds(15);
  private int _localPollFailures;
 
  // Retry only the normal data poll. First failure retains its configured delay;

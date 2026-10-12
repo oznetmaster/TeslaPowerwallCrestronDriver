@@ -44,6 +44,7 @@ public sealed class SignedLanCoreDiagnosticTests
   await TestSupport.Complete(rig.Handler.Entered.Task);
   cancel.Cancel();
   await Assert.CatchAsync<OperationCanceledException>(async () => await TestSupport.Complete(poll));
+  Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.False,"Lifetime cancellation must prevent complete publication.");
   rig.Handler.BlockStage = null;
   await TestSupport.Complete(rig.Poll(CancellationToken.None));
   Assert.That(rig.Driver.OnlineIndicatorIsOnline, Is.True);
@@ -91,29 +92,30 @@ public sealed class SignedLanCoreDiagnosticTests
  }
  [TestCase("telemetry")]
  [TestCase("configuration")]
- public async Task ActualSharedFifteenSecondCoreDeadlineCancelsSignedStageReleasesAndRecovers(string stage)
+ public async Task ActualFifteenSecondHttpTimeoutPublishesOfflineReleasesGatesAndSameLifetimeRecovers(string stage)
  {
-  // Transport60s isolates the real unchanged driver15s whole-core deadline.
-  using var rig=await Rig.Create(httpTimeoutSeconds:60);
+  using var rig=await Rig.Create();using var lifetime=new CancellationTokenSource();
   rig.Handler.BlockStage=stage;
-  using var lifetime=new CancellationTokenSource();
   var clock=System.Diagnostics.Stopwatch.StartNew();
-  var poll=rig.Poll(lifetime.Token);
-  await TestSupport.Complete(rig.Handler.Entered.Task);
-  Assert.That(await Task.WhenAny(poll,Task.Delay(TimeSpan.FromSeconds(20))),Is.SameAs(poll),"Actual production core deadline must cancel the stalled signed request.");
-  await poll;
-  Assert.That(lifetime.IsCancellationRequested,Is.False);
-  Assert.That(clock.Elapsed.TotalSeconds,Is.InRange(14,20));
-  Assert.That(rig.Driver.TileDisplay,Is.EqualTo("Offline"));
-  Assert.That(rig.Driver.StatusSummary,Is.EqualTo("Local Powerwall data refresh timed out"));
-  Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.False);
-  Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.False);
-  Assert.That(((SemaphoreSlim)typeof(TeslaPowerwallDriver).GetField("_connectionGate",Private).GetValue(rig.Driver)).CurrentCount,Is.EqualTo(1));
-  Assert.That((int)typeof(TeslaPowerwallDriver).GetField("_refreshInProgress",Private).GetValue(rig.Driver),Is.Zero);
-  rig.Handler.BlockStage=null;
-  await TestSupport.Complete(rig.Poll(lifetime.Token));
-  Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.True);
-  Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
+  var loop=(Task)typeof(TeslaPowerwallDriver).GetMethod("RefreshLoopAsync",Private).Invoke(rig.Driver,new object[]{lifetime.Token});
+  try
+  {
+   await TestSupport.Complete(rig.Handler.Entered.Task);
+   await Until(()=>rig.Driver.StatusSummary.StartsWith("Unable to connect:",StringComparison.Ordinal),20);
+   Assert.That(clock.Elapsed.TotalSeconds,Is.InRange(14,20));
+   Assert.That(rig.Driver.TileDisplay,Is.EqualTo("Offline"));
+   Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.False);
+   Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.False);
+   Assert.That(lifetime.IsCancellationRequested,Is.False);
+   Assert.That(loop.IsCompleted,Is.False);
+   Assert.That(((SemaphoreSlim)typeof(TeslaPowerwallDriver).GetField("_connectionGate",Private).GetValue(rig.Driver)).CurrentCount,Is.EqualTo(1));
+   Assert.That((int)typeof(TeslaPowerwallDriver).GetField("_refreshInProgress",Private).GetValue(rig.Driver),Is.Zero);
+   rig.Handler.BlockStage=null;
+   ((SemaphoreSlim)typeof(TeslaPowerwallDriver).GetField("_refreshWake",Private).GetValue(rig.Driver)).Release();
+   await Until(()=>rig.Driver.ReadyIndicatorIsReady);
+   Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
+   Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
+  }finally{lifetime.Cancel();await TestSupport.Complete(loop);}
  }
  [TestCase("telemetry")]
  [TestCase("configuration")]
@@ -136,10 +138,30 @@ public sealed class SignedLanCoreDiagnosticTests
    Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
   }finally{lifetime.Cancel();await TestSupport.Complete(loop);}
  }
- private static async Task Until(Func<bool> observed)
+ [Test]
+ public async Task IndividuallyValidSignedReadsMayExceedFifteenSecondsTogetherWithoutOverlapOrPartialPublication()
+ {
+  using var rig=await Rig.Create();
+  rig.Handler.StageDelay=TimeSpan.FromSeconds(8);
+  var clock=System.Diagnostics.Stopwatch.StartNew();
+  var poll=rig.Poll(CancellationToken.None);
+  await Task.Delay(TimeSpan.FromSeconds(9));
+  Assert.That(poll.IsCompleted,Is.False,"Second valid request must still be owned.");
+  Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.False,"No partial data publication.");
+  await TestSupport.Complete(rig.Poll(CancellationToken.None));
+  Assert.That(rig.Handler.Stages,Is.EqualTo(new[]{"telemetry","configuration"}),"Concurrent refresh must not issue extra requests.");
+  Assert.That(await Task.WhenAny(poll,Task.Delay(TimeSpan.FromSeconds(12))),Is.SameAs(poll));
+  await poll;
+  Assert.That(clock.Elapsed.TotalSeconds,Is.GreaterThanOrEqualTo(16));
+  Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
+  Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.True);
+  Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
+  Assert.That(rig.Handler.Stages,Is.EqualTo(new[]{"telemetry","configuration"}));
+ }
+ private static async Task Until(Func<bool> observed,int timeoutSeconds=5)
  {
   var clock=System.Diagnostics.Stopwatch.StartNew();
-  while(!observed()&&clock.Elapsed.TotalSeconds<5)await Task.Delay(10);
+  while(!observed()&&clock.Elapsed.TotalSeconds<timeoutSeconds)await Task.Delay(10);
   Assert.That(observed(),Is.True,"Synthetic bounded state observation did not complete.");
  }
  private sealed class Rig : IDisposable
@@ -178,6 +200,7 @@ public sealed class SignedLanCoreDiagnosticTests
  }
  private sealed class SignedHandler : HttpMessageHandler
  {
+  internal TimeSpan StageDelay=TimeSpan.FromMilliseconds(25);
   internal string BlockStage;
   internal string TimeoutStage;
   internal readonly TaskCompletionSource<bool> Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -199,7 +222,7 @@ public sealed class SignedLanCoreDiagnosticTests
     string stage=configuration?"configuration":"telemetry";Stages.Add(stage);
     if(stage==TimeoutStage)throw new TaskCanceledException("Synthetic HTTP request timeout; caller lifetime is not cancelled.");
     if(stage==BlockStage){Entered.TrySetResult(true);await Task.Delay(Timeout.Infinite,token);}
-    await Task.Delay(25,token);
+    await Task.Delay(StageDelay,token);
     ByteString reply;
     if(configuration)
     {

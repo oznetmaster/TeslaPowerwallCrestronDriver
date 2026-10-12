@@ -383,21 +383,10 @@ public sealed partial class TeslaPowerwallDriver
   bool succeeded;
   if (IsLocal)
    {
-   using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-   deadline.CancelAfter(LocalCorePollTimeout);
-   var diagnostics=new LocalPollDiagnostics(cancellationToken,deadline.Token,LogWarning);
-   try { succeeded = await PollCoreAsync(client, deadline.Token, diagnostics).ConfigureAwait(false); }
-   catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested && deadline.IsCancellationRequested)
-    {
-    diagnostics.Report(ex);
-    lock (_stateLock)
-     {
-     EnsureCurrentClient(client, cancellationToken);
-     RecordLocalPollFailure(cancellationToken);
-     SetOfflineState("Local Powerwall data refresh timed out");
-     }
-    return;
-    }
+   // Each existing API request retains its own timeout. A single request budget
+   // must not cancel the sum of multiple individually valid serialized reads.
+   var diagnostics=new LocalPollDiagnostics(cancellationToken,LogWarning);
+   try { succeeded = await PollCoreAsync(client, cancellationToken, diagnostics).ConfigureAwait(false); }
    catch (Exception ex)
     {
     diagnostics.Report(ex);
