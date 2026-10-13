@@ -243,11 +243,13 @@ Tesla and Powerwall are trademarks of Tesla, Inc.
 
 ## Automated tests
 
-The solution includes `TeslaPowerwallCrestronDriver.Tests` (NUnit 5 with the Visual Studio NUnit adapter) and `TeslaPowerwallCrestronDriver.ProcessorTests` (a standalone Crestron Home Utility test package). The 87 offline unit cases exercise driver logic without credentials or real device commands. The 29 processor lifecycle cases are skipped by the net472 Windows run; the desktop SDK harness executes them alongside 11 Windows provisioning cases. See the [test guide](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.Tests/README.md) and [Android UI tests](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.AndroidTests/README.md).
+The solution includes production-assembly tests, the .NET 10 desktop SDK harness and a standalone processor test package. For an ordinary offline Windows run, use the desktop harness; it compiles the relevant driver and fixture sources against the desktop SDK. The net472 production assembly also references processor-only components such as `Crestron.SimplSharp.ManagedUtilitiesCE`; running its entire suite on Windows is not a substitute for the desktop harness. Test counts change with the source revision; use the retained result file rather than a fixed count in this guide.
 
 ```powershell
-dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -c Release
+dotnet test TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj -c Release --filter 'FullyQualifiedName!~LiveSiteTests'
 ```
+
+Configure the private `CompactJsonPath` as described below. Building this harness does not deploy or change the driver package. See the [test guide](TeslaPowerwallCrestronDriver.Tests/README.md) and [Android UI tests](TeslaPowerwallCrestronDriver.AndroidTests/README.md).
 
 Build the processor project in Debug in Visual Studio to build and deploy using private deployment settings. See [processor test instructions](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for setup, suites, tile operation and UI separation. Processor packages are not published to NuGet. See [CHANGELOG](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/CHANGELOG.md) for changes.
 
@@ -263,8 +265,7 @@ The current source includes offline, SDK lifecycle and optional live API/UI-bind
 `TeslaPowerwallCrestronDriver.Lifecycle.Tests` runs the entity checks against the real desktop SDK on .NET 10. It compiles the relevant driver sources and shares fixture sources with the net472 processor tests. Building this project does not deploy a driver. A locally supplied `Newtonsoft.Json.Compact.dll` is needed by the SDK's manifest reader; it is supplied by the processor at runtime and must not be added to source control or bundled with the processor test package.
 
 ```powershell
-dotnet test TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj --filter "TestCategory!=Processor"
-dotnet test TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj
+dotnet test TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj -c Release --filter 'FullyQualifiedName!~LiveSiteTests'
 ```
 
 Set `CompactJsonPath` in the desktop test project's private `DesktopTest.Local.props`, excluded through `.git/info/exclude`, or pass it as an MSBuild property. Keep machine paths and credentials out of tracked files.

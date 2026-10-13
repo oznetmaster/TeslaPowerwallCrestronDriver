@@ -2,6 +2,16 @@
 
 Use NUnit 5.0.0 and NUnit3TestAdapter 6.3.0. The net472 project validates the production assembly; the .NET 10 lifecycle project compiles the same driver and fixtures against the desktop SDK. Processor execution uses the separate processor test package and the CrestronHomeNUnit adapter workflow.
 
+## Offline Windows execution
+
+Use the desktop harness for the combined offline driver and lifecycle fixtures:
+
+```powershell
+dotnet test TeslaPowerwallCrestronDriver.Lifecycle.Tests/TeslaPowerwallCrestronDriver.Lifecycle.Tests.csproj -c Release --filter 'FullyQualifiedName!~LiveSiteTests'
+```
+
+Supply `CompactJsonPath` through the desktop project's private `DesktopTest.Local.props` or an MSBuild property. The net472 production assembly references processor-only SDK components and its whole suite can fail during Windows type initialization before test logic runs. Retain those failures as harness failures, not measured driver failures. No deploy or new submission is performed by the desktop command. Use the actual TRX counts for the checked source revision.
+
 ## Read-only live matrix
 
 Run Owner, Fleet, Gateway and signed LAN separately. Ordinary home-network Wi-Fi and Ethernet use the same local API; either IP address or a resolvable hostname may be supplied.
