@@ -48,6 +48,15 @@ public sealed partial class TeslaPowerwallDriver
 		private set => SetAndNotify ("historyVisible", value, ref field);
 		}
 
+	/// <summary>Gets whether the Settings refresh button is available for the selected cloud connection.</summary>
+	[EntityProperty (Id = "refreshNowVisible")]
+	[EntityPropertyMetadata (ExtensionUiProperty = true)]
+	public bool RefreshNowVisible
+		{
+		get;
+		private set => SetAndNotify ("refreshNowVisible", value, ref field);
+		}
+
 	/// <summary>Gets the configured connection endpoint and polling delay.</summary>
 	[EntityProperty (Id = "connectionDisplay")]
 	[EntityPropertyMetadata (ExtensionUiProperty = true)]

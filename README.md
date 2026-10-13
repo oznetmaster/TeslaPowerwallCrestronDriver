@@ -60,7 +60,7 @@ See the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLib
 - Impact page showing self-powered percentage, home usage, and grid usage for the selected period
 - Settings page to adjust backup reserve, grid charging, Storm Watch, operation mode, and grid export mode directly from Crestron Home
 - Automatic background polling with a configurable refresh interval
-- Manual "Refresh Now" command
+- Manual "Refresh Now" command; the Settings button is shown for cloud connections
 - Programmable commands and events for the Crestron Home programming environment (grid status changed to backup, grid status restored, Storm Watch activated/deactivated, battery reserve low, battery fully charged)
 
 ---
@@ -99,7 +99,7 @@ Shows the settings supplied by the selected connection. Local controls are disab
 - **Storm Watch** — Tesla's predictive pre-charge ahead of severe weather forecasts (only shown when connected via the Tesla Owner API)
 - **Operation Mode** — Self Powered, Backup Only, or Autonomous
 - **Grid Export** — Battery OK, Solar Only, or Never
-- **Refresh Now** — forces an immediate refresh instead of waiting for the next scheduled poll
+- **Refresh Now** — shown for Owner/Fleet cloud connections; requests an ordinary poll when idle instead of waiting for the next scheduled poll. It may return cached or unchanged data and does not bypass the separate history refresh cadence. The programmable command remains available in all modes; the button is hidden for local connections.
 
 ### Programming
 

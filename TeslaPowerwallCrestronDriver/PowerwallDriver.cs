@@ -319,6 +319,7 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		ControlsEnabled = CanControl;
 		GridSettingsVisible = SupportsGridSettings;
 		HistoryVisible = HasHistory;
+		RefreshNowVisible = !IsLocal;
 		ConnectionDisplay = IsLocal
 			? _local.Connection + " | " + _local.Host + " | " + _local.IntervalSeconds + " seconds"
 			: (IsFleetApi ? "Fleet" : "Owner") + " | " + _refreshIntervalSeconds + " seconds";

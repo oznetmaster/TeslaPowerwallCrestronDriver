@@ -72,7 +72,7 @@
 				<selectorbutton id="OperationModeSelector" visible="{operatingSettingsVisible}" enabled="{controlsEnabled}" label="^OperationModeHeaderLabel" value="{operationMode}" />
 				<selectorbutton id="GridExportSelector" visible="{gridSettingsVisible}" enabled="{controlsEnabled}" label="^GridExportHeaderLabel" value="{gridExportMode}" />
 				<textdisplay id="ConnectionDisplay" title="#Connection" line1label="{connectionDisplay}" />
-				<button id="RefreshNowButton" label="^RefreshNowButtonLabel" action="command:refreshNow" />
+				<button id="RefreshNowButton" label="^RefreshNowButtonLabel" action="command:refreshNow" visible="{refreshNowVisible}" />
 			</controls>
 		</layout>
 	</layouts>

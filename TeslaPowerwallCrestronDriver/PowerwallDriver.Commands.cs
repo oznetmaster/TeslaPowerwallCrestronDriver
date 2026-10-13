@@ -252,7 +252,7 @@ public sealed partial class TeslaPowerwallDriver
 		_ = Task.Run (TriggerImmediateRefreshAsync);
 		}
 
-	/// <summary>Immediately refreshes monitored Powerwall status from the Tesla cloud.</summary>
+	/// <summary>Requests the ordinary monitored-status poll when no refresh is already running.</summary>
 	[EntityCommand (Id = "refreshNow")]
 	[EntityCommandMetadata (Programmable = true)]
 	public void RefreshNow ()
