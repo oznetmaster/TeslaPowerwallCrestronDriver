@@ -1,5 +1,18 @@
 # TeslaPowerwallCrestronDriver
 
+## Crestron availability
+
+This driver is available through Crestron. Find it on the [Crestron driver site](https://drivers.crestron.io/) or in **Crestron Home Configure Pro**, using the following catalog entry:
+
+| Field | Catalog entry |
+|---|---|
+| Developer | Neil Colvin |
+| Device type | Energy Automation |
+| Manufacturer | Tesla |
+| Model | Tesla Powerwall |
+
+Crestron catalog and GitHub release versions may differ; check the version offered by your chosen installation source.
+
 For shipped changes, see the [changelog](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/CHANGELOG.md). Test, CI and build history is recorded separately in [development and validation history](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/DEVELOPMENT-HISTORY.md).
 
 
@@ -119,7 +132,9 @@ For Crestron Home programmers, every Settings control above is also exposed as a
 
 ## Installation
 
-The best way to download and install this driver on a Crestron Home system is to use the [Crestron Home Driver Feed Installer](https://github.com/oznetmaster/Crestron-Home-Driver-Feed-Installer) repository and application.
+Install the Crestron catalog version through **Crestron Home Configure Pro**, looking for **Tesla Powerwall** under **Tesla** (developer **Neil Colvin**, device type **Energy Automation**). The driver is also listed on the [Crestron driver site](https://drivers.crestron.io/).
+
+Alternatively, use the [Crestron Home Driver Feed Installer](https://github.com/oznetmaster/Crestron-Home-Driver-Feed-Installer) repository and application to download and install a community-distributed release.
 
 If you prefer to install manually, use the attached `.pkg` asset from the relevant GitHub Release. The automatic GitHub `Source code (zip)` and `Source code (tar.gz)` assets are repository snapshots, not installable Crestron driver packages.
 
