@@ -91,7 +91,7 @@ public sealed class RefreshNowVisibilityTests
 	[Test]
 	public void OnlyRefreshButtonUsesModeVisibilityAndCommandRemainsAvailable ()
 		{
-		var xml = XDocument.Load (Path.Combine (TestSupport.DataDirectory, "UiDefinitions", "UiDefinition.xml"));
+		var xml = XDocument.Load (Path.Combine (TestSupport.DataDirectory, "uidefinitions", "UiDefinition.xml"));
 		var button = xml.Descendants ().Single (x => (string)x.Attribute ("id") == "RefreshNowButton");
 		Assert.That ((string)button.Attribute ("visible"), Is.EqualTo ("{refreshNowVisible}"));
 		Assert.That ((string)button.Attribute ("action"), Is.EqualTo ("command:refreshNow"));

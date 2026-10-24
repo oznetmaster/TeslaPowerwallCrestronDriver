@@ -317,7 +317,7 @@ public sealed class RefreshLifecycleTests
 	[Test]
 	public async Task PinnedSignedLanClientPropagatesRequestTimeoutWithValidCallerToken ()
 		{
-		using var key = System.Security.Cryptography.RSA.Create (4096);
+		using var key = new System.Security.Cryptography.RSACryptoServiceProvider (4096) { PersistKeyInCsp = false };
 		var options = new PowerwallOptions { Host = "192.0.2.1", Password = "synthetic", LocalSigningKey = key, LocalProtocol = TeslaPowerwallLibrary.PowerwallLocalProtocol.TedapiSigned, Timeout = TimeSpan.FromMilliseconds (50) };
 		var type = typeof (Powerwall).Assembly.GetType ("TeslaPowerwallLibrary.Tedapi.PowerwallTedapiClient");
 		var handler = new TimeoutHandler ();

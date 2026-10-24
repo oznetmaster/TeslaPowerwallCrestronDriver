@@ -32,9 +32,9 @@ internal static class TestSupport
 			}
 		catch (TargetInvocationException e) when (e.InnerException != null) { ExceptionDispatchInfo.Capture (e.InnerException).Throw (); throw; }
 		}
-	internal static async Task Complete (Task task)
+	internal static async Task Complete (Task task, int timeoutMilliseconds = 5000)
 		{
-		Assert.That (await Task.WhenAny (task, Task.Delay (5000)), Is.SameAs (task), "Operation did not complete within five seconds.");
+		Assert.That (await Task.WhenAny (task, Task.Delay (timeoutMilliseconds)), Is.SameAs (task), "Operation did not complete within the bounded test wait (" + timeoutMilliseconds + " ms).");
 		await task;
 		}
 	internal static string DataDirectory

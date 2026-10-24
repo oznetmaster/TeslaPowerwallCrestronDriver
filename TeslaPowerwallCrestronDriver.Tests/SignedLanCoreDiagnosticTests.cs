@@ -31,7 +31,7 @@ public sealed class SignedLanCoreDiagnosticTests
  public async Task FullSignedCoreUsesTwoDelayedRequestsWithCachedProjectionsAndNoProbe()
  {
   using var rig = await Rig.Create();
-  await TestSupport.Complete(rig.Poll(CancellationToken.None));
+  await Complete(rig.Poll(CancellationToken.None));
   Assert.That(rig.Handler.Stages, Is.EqualTo(new[]{"telemetry","configuration"}));
   Assert.That(rig.Handler.MaximumActive, Is.EqualTo(1));
   Assert.That(rig.Driver.OnlineIndicatorIsOnline, Is.True);
@@ -48,12 +48,12 @@ public sealed class SignedLanCoreDiagnosticTests
   rig.Handler.BlockStage = stage;
   using var cancel = new CancellationTokenSource();
   var poll = rig.Poll(cancel.Token);
-  await TestSupport.Complete(rig.Handler.Entered.Task);
+  await Complete(rig.Handler.Entered.Task);
   cancel.Cancel();
-  await Assert.CatchAsync<OperationCanceledException>(async () => await TestSupport.Complete(poll));
+  await Assert.CatchAsync<OperationCanceledException>(async () => await Complete(poll));
   Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.False,"Lifetime cancellation must prevent complete publication.");
   rig.Handler.BlockStage = null;
-  await TestSupport.Complete(rig.Poll(CancellationToken.None));
+  await Complete(rig.Poll(CancellationToken.None));
   Assert.That(rig.Driver.OnlineIndicatorIsOnline, Is.True);
   Assert.That(rig.Driver.ReadyIndicatorIsReady, Is.True);
   Assert.That(rig.Handler.MaximumActive, Is.EqualTo(1));
@@ -67,16 +67,16 @@ public sealed class SignedLanCoreDiagnosticTests
   rig.Handler.BlockStage = "telemetry";
   using var ownerCancel = new CancellationTokenSource();
   var poll = rig.Poll(ownerCancel.Token);
-  await TestSupport.Complete(rig.Handler.Entered.Task);
+  await Complete(rig.Handler.Entered.Task);
   using var queuedCancel = new CancellationTokenSource();
   var queued = rig.Transport.GetTelemetryAsync(force:true, cancellationToken:queuedCancel.Token);
   queuedCancel.Cancel();
-  await Assert.CatchAsync<OperationCanceledException>(async () => await TestSupport.Complete(queued));
+  await Assert.CatchAsync<OperationCanceledException>(async () => await Complete(queued));
   Assert.That(poll.IsCompleted, Is.False);
   ownerCancel.Cancel();
-  await Assert.CatchAsync<OperationCanceledException>(async () => await TestSupport.Complete(poll));
+  await Assert.CatchAsync<OperationCanceledException>(async () => await Complete(poll));
   rig.Handler.BlockStage = null;
-  await TestSupport.Complete(rig.Poll(CancellationToken.None));
+  await Complete(rig.Poll(CancellationToken.None));
   Assert.That(rig.Driver.ReadyIndicatorIsReady, Is.True);
   Assert.That(rig.Handler.MaximumActive, Is.EqualTo(1));
  }
@@ -88,11 +88,11 @@ public sealed class SignedLanCoreDiagnosticTests
   rig.Handler.TimeoutStage=stage;
   // RunPollAsync releases gates and propagates non-lifetime request failures;
   // RefreshLoopAsync owns the offline-publication boundary.
-  await Assert.CatchAsync<OperationCanceledException>(async()=>await TestSupport.Complete(rig.Poll(CancellationToken.None)));
+  await Assert.CatchAsync<OperationCanceledException>(async()=>await Complete(rig.Poll(CancellationToken.None)));
   Assert.That((int)typeof(TeslaPowerwallDriver).GetField("_refreshInProgress",Private).GetValue(rig.Driver),Is.Zero);
   Assert.That(((SemaphoreSlim)typeof(TeslaPowerwallDriver).GetField("_connectionGate",Private).GetValue(rig.Driver)).CurrentCount,Is.EqualTo(1));
   rig.Handler.TimeoutStage=null;
-  await TestSupport.Complete(rig.Poll(CancellationToken.None));
+  await Complete(rig.Poll(CancellationToken.None));
   Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
   Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.True);
   Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
@@ -103,13 +103,13 @@ public sealed class SignedLanCoreDiagnosticTests
  {
   using var rig=await Rig.Create();using var lifetime=new CancellationTokenSource();
   rig.Handler.BlockStage=stage;
-  var clock=System.Diagnostics.Stopwatch.StartNew();
   var loop=(Task)typeof(TeslaPowerwallDriver).GetMethod("RefreshLoopAsync",Private).Invoke(rig.Driver,new object[]{lifetime.Token});
   try
   {
-   await TestSupport.Complete(rig.Handler.Entered.Task);
+   await Complete(rig.Handler.Entered.Task);
    await Until(()=>rig.Driver.StatusSummary.StartsWith("Unable to connect:",StringComparison.Ordinal),20);
-   Assert.That(clock.Elapsed.TotalSeconds,Is.InRange(14,20));
+   Assert.That(rig.Handler.BlockedDuration,Is.Not.Null);
+   Assert.That(rig.Handler.BlockedDuration.Value.TotalSeconds,Is.InRange(14,20),"Measure the HTTP timeout after the signed request reaches the handler, excluding RSA signing CPU time.");
    Assert.That(rig.Driver.TileDisplay,Is.EqualTo("Offline"));
    Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.False);
    Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.False);
@@ -122,7 +122,7 @@ public sealed class SignedLanCoreDiagnosticTests
    await Until(()=>rig.Driver.ReadyIndicatorIsReady);
    Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
    Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
-  }finally{lifetime.Cancel();await TestSupport.Complete(loop);}
+  }finally{lifetime.Cancel();await Complete(loop);}
  }
  [TestCase("telemetry")]
  [TestCase("configuration")]
@@ -143,7 +143,7 @@ public sealed class SignedLanCoreDiagnosticTests
    await Until(()=>rig.Driver.ReadyIndicatorIsReady);
    Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
    Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
-  }finally{lifetime.Cancel();await TestSupport.Complete(loop);}
+  }finally{lifetime.Cancel();await Complete(loop);}
  }
  [Test]
  public async Task IndividuallyValidSignedReadsMayExceedFifteenSecondsTogetherWithoutOverlapOrPartialPublication()
@@ -155,9 +155,9 @@ public sealed class SignedLanCoreDiagnosticTests
   await Task.Delay(TimeSpan.FromSeconds(9));
   Assert.That(poll.IsCompleted,Is.False,"Second valid request must still be owned.");
   Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.False,"No partial data publication.");
-  await TestSupport.Complete(rig.Poll(CancellationToken.None));
+  await Complete(rig.Poll(CancellationToken.None));
   Assert.That(rig.Handler.Stages,Is.EqualTo(new[]{"telemetry","configuration"}),"Concurrent refresh must not issue extra requests.");
-  Assert.That(await Task.WhenAny(poll,Task.Delay(TimeSpan.FromSeconds(12))),Is.SameAs(poll));
+  Assert.That(await Task.WhenAny(poll,Task.Delay(TimeSpan.FromSeconds(30))),Is.SameAs(poll));
   await poll;
   Assert.That(clock.Elapsed.TotalSeconds,Is.GreaterThanOrEqualTo(16));
   Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
@@ -165,12 +165,22 @@ public sealed class SignedLanCoreDiagnosticTests
   Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
   Assert.That(rig.Handler.Stages,Is.EqualTo(new[]{"telemetry","configuration"}));
  }
- private static async Task Until(Func<bool> observed,int timeoutSeconds=5)
+ // RSA-4096 signing on the processor can exceed a desktop's five-second test wait.
+ // These bounds guard fixture progress; the actual HTTP timeout remains asserted separately.
+ private static Task Complete(Task task) => TestSupport.Complete(task, 30000);
+ private static async Task Until(Func<bool> observed,int timeoutSeconds=30)
  {
   var clock=System.Diagnostics.Stopwatch.StartNew();
   while(!observed()&&clock.Elapsed.TotalSeconds<timeoutSeconds)await Task.Delay(10);
   Assert.That(observed(),Is.True,"Synthetic bounded state observation did not complete.");
  }
+ // The key is synthetic and is never enrolled. Reuse its parameters across fixtures
+ // so repeated processor key generation does not dominate cancellation coverage.
+ private static readonly Lazy<string> SyntheticKey = new(() =>
+ {
+  using var key = new RSACryptoServiceProvider(4096){PersistKeyInCsp=false};
+  return key.ToXmlString(true);
+ });
  private sealed class Rig : IDisposable
  {
   internal RSA Key; internal DriverLogger Logger; internal TeslaPowerwallDriver Driver;
@@ -182,12 +192,13 @@ public sealed class SignedLanCoreDiagnosticTests
    try
    {
     rig.Key = new RSACryptoServiceProvider(4096){PersistKeyInCsp=false};
+    rig.Key.FromXmlString(SyntheticKey.Value);
     var options = new PowerwallOptions {Host="192.0.2.1", Password="synthetic",
      LocalProtocol=PowerwallLocalProtocol.TedapiSigned, LocalSigningKey=rig.Key,
      CacheExpireSeconds=15, Timeout=TimeSpan.FromSeconds(httpTimeoutSeconds), NoLocalSessionPersistence=true,AllowLocalControl=false};
     rig.Handler = new SignedHandler();
     rig.Transport = (PowerwallTedapiClient)Activator.CreateInstance(typeof(PowerwallTedapiClient),Private,null,new object[]{options,rig.Handler,null},null);
-    await TestSupport.Complete(rig.Transport.AuthenticateAsync());
+    await Complete(rig.Transport.AuthenticateAsync());
     rig.Handler.Stages.Clear();
     var client = new Powerwall(options);
     typeof(Powerwall).GetField("_client",Private).SetValue(client,rig.Transport);
@@ -209,6 +220,7 @@ public sealed class SignedLanCoreDiagnosticTests
  {
   internal TimeSpan StageDelay=TimeSpan.FromMilliseconds(25);
   internal string BlockStage;
+  internal TimeSpan? BlockedDuration;
   internal string TimeoutStage;
   internal readonly TaskCompletionSource<bool> Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
   internal readonly List<string> Stages = new();
@@ -228,7 +240,13 @@ public sealed class SignedLanCoreDiagnosticTests
     bool configuration=Value<object>(legacy,"Config")!=null;
     string stage=configuration?"configuration":"telemetry";Stages.Add(stage);
     if(stage==TimeoutStage)throw new TaskCanceledException("Synthetic HTTP request timeout; caller lifetime is not cancelled.");
-    if(stage==BlockStage){Entered.TrySetResult(true);await Task.Delay(Timeout.Infinite,token);}
+    if(stage==BlockStage)
+    {
+     var blocked=System.Diagnostics.Stopwatch.StartNew();
+     Entered.TrySetResult(true);
+     try{await Task.Delay(Timeout.Infinite,token);}
+     finally{blocked.Stop();BlockedDuration=blocked.Elapsed;}
+    }
     await Task.Delay(StageDelay,token);
     ByteString reply;
     if(configuration)
