@@ -1,6 +1,6 @@
 # TeslaPowerwallCrestronDriver processor tests
 
-## Test package 2.0.0
+## Test package 2.0.7
 
 The release includes the standalone test `.pkg`, documentation, source revisions and checksums. It uses NUnit 5.0.0 and the public CrestronHomeNUnit SDK 2.3.0. Unit and lifecycle suites run without cloud or Powerwall access. Manual live suites require private inputs and are read-only.
 
@@ -20,8 +20,8 @@ The package appears at `bin/Debug/net472/TeslaPowerwallCrestronDriver.ProcessorT
 
 ## Suites
 
-- **Unit Tests**: 87 offline driver cases. Run on Windows through the NUnit Visual Studio adapter or on the processor. No account credentials or physical devices are needed.
-- **Processor Lifecycle**: 29 SDK lifecycle checks. Changing authentication mode or Fleet application requires a fresh token; rejected edits preserve active configuration; refresh interval boundaries are validated; clearing configuration removes active and pending credentials and resets availability. Run these separately on the processor; the shared desktop harness provides additional validation.
+- **Unit Tests**: 91 offline driver cases. Run on Windows through the NUnit Visual Studio adapter or on the processor. No account credentials or physical devices are needed.
+- **Processor Lifecycle**: 87 SDK lifecycle checks. Changing authentication mode or Fleet application requires a fresh token; rejected edits preserve active configuration; refresh interval boundaries are validated; clearing configuration removes active and pending credentials and resets availability. Run these separately on the processor; the shared desktop harness provides additional validation.
 
 Use the Windows runner's **Find packages**, select this package, connect, then select a suite and **Run all**. Discovery uses a dynamically assigned port. The standalone tile exposes the same suites and results. Nothing runs automatically on deployment. Original driver assets are under `DriverTestData`; the test tile's assets retain their own root paths.
 
