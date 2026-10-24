@@ -3,11 +3,11 @@
 ## Patch preparation - 2.0.7 (2026-10-24)
 
 - Update every production/tooling TeslaPowerwallLibrary reference to the public 2.3.0 package. Include the committed local polling, cancellation, diagnostics and refresh-visibility corrections since 2.0.0.
-- Local desktop SDK discovery matched all 189 passing offline cases, including provisioning fixtures; six live cases were discovered separately. The existing generated-build CS0162 warning remains visible.
+- Local desktop SDK discovery matched all 190 passing offline cases, including provisioning fixtures; six live cases were discovered separately. The existing generated-build CS0162 warning remains visible.
 - Release/version/discovery policy checks passed. Seven additional staging checks cover exact provenance, changed inventory/bytes and a NuGet wrapper whose embedded payload differs from the standalone driver.
 - Split preparation from publication. Promotion requires the exact existing release tag, a successful preparation job for the same repository/commit, unchanged asset checksums and the current release checks. Reuse validated package bytes without rebuilding.
 - Classify twelve SDK-dependent Gateway/signed-LAN cases as processor lifecycle tests. They still execute in the desktop SDK harness and on the processor; Windows net472 skips them with the same explicit runtime requirement as the other lifecycle fixtures.
-- Processor validation exposed test portability issues: use an explicit RSA-4096 provider, match packaged UI directory casing, and measure the 15-second HTTP wait at handler entry instead of including RSA signing time. Signed-fixture progress waits remain bounded at 30 seconds; the HTTP timeout assertion remains 14–20 seconds. The failed attempt is retained separately and is not release approval.
+- Processor validation exposed test portability issues: use an explicit RSA-4096 provider, match packaged UI directory casing, and measure the 15-second HTTP wait at handler entry instead of including RSA signing time. Signed-fixture progress waits remain bounded, with a separate 90-second recovery observation; the HTTP timeout assertion remains 14–20 seconds. Synthetic HTTP timing cases use a transport-only signer, and an additional real-RSA case retains signing coverage. A one-case real-signing processor diagnostic passed in 101.9 seconds, confirming why whole-fixture desktop timing bounds are unsuitable. The failed attempt is retained separately and is not release approval.
 - Use TestAdapter 3.0.0 and processor-independent RoomName selection. Processor and read-only live receipts are retained outside source control and must pass before publication.
 
 ## Local connection correction and major release - 2.0.0

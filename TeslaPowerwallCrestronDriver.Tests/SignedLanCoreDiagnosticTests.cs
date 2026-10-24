@@ -27,10 +27,11 @@ public sealed class SignedLanCoreDiagnosticTests
 #endif
  }
  private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
- [Test]
- public async Task FullSignedCoreUsesTwoDelayedRequestsWithCachedProjectionsAndNoProbe()
+ [TestCase(false)]
+ [TestCase(true)]
+ public async Task FullSignedCoreUsesTwoDelayedRequestsWithCachedProjectionsAndNoProbe(bool realSigning)
  {
-  using var rig = await Rig.Create();
+  using var rig = await Rig.Create(realSigning);
   await Complete(rig.Poll(CancellationToken.None));
   Assert.That(rig.Handler.Stages, Is.EqualTo(new[]{"telemetry","configuration"}));
   Assert.That(rig.Handler.MaximumActive, Is.EqualTo(1));
@@ -119,7 +120,7 @@ public sealed class SignedLanCoreDiagnosticTests
    Assert.That((int)typeof(TeslaPowerwallDriver).GetField("_refreshInProgress",Private).GetValue(rig.Driver),Is.Zero);
    rig.Handler.BlockStage=null;
    ((SemaphoreSlim)typeof(TeslaPowerwallDriver).GetField("_refreshWake",Private).GetValue(rig.Driver)).Release();
-   await Until(()=>rig.Driver.ReadyIndicatorIsReady);
+   await Until(()=>rig.Driver.ReadyIndicatorIsReady,90,()=>rig.Describe(loop));
    Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
    Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
   }finally{lifetime.Cancel();await Complete(loop);}
@@ -140,7 +141,7 @@ public sealed class SignedLanCoreDiagnosticTests
    Assert.That(lifetime.IsCancellationRequested,Is.False);Assert.That(loop.IsCompleted,Is.False);
    rig.Handler.TimeoutStage=null;
    ((SemaphoreSlim)typeof(TeslaPowerwallDriver).GetField("_refreshWake",Private).GetValue(rig.Driver)).Release();
-   await Until(()=>rig.Driver.ReadyIndicatorIsReady);
+   await Until(()=>rig.Driver.ReadyIndicatorIsReady,90,()=>rig.Describe(loop));
    Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
    Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
   }finally{lifetime.Cancel();await Complete(loop);}
@@ -156,7 +157,8 @@ public sealed class SignedLanCoreDiagnosticTests
   Assert.That(poll.IsCompleted,Is.False,"Second valid request must still be owned.");
   Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.False,"No partial data publication.");
   await Complete(rig.Poll(CancellationToken.None));
-  Assert.That(rig.Handler.Stages,Is.EqualTo(new[]{"telemetry","configuration"}),"Concurrent refresh must not issue extra requests.");
+  // The original poll may still be signing its second request on Mono.
+  // The exact final sequence below verifies that the concurrent call added no requests.
   Assert.That(await Task.WhenAny(poll,Task.Delay(TimeSpan.FromSeconds(30))),Is.SameAs(poll));
   await poll;
   Assert.That(clock.Elapsed.TotalSeconds,Is.GreaterThanOrEqualTo(16));
@@ -168,11 +170,11 @@ public sealed class SignedLanCoreDiagnosticTests
  // RSA-4096 signing on the processor can exceed a desktop's five-second test wait.
  // These bounds guard fixture progress; the actual HTTP timeout remains asserted separately.
  private static Task Complete(Task task) => TestSupport.Complete(task, 30000);
- private static async Task Until(Func<bool> observed,int timeoutSeconds=30)
+ private static async Task Until(Func<bool> observed,int timeoutSeconds=30,Func<string> diagnostics=null)
  {
   var clock=System.Diagnostics.Stopwatch.StartNew();
   while(!observed()&&clock.Elapsed.TotalSeconds<timeoutSeconds)await Task.Delay(10);
-  Assert.That(observed(),Is.True,"Synthetic bounded state observation did not complete.");
+  Assert.That(observed(),Is.True,"Synthetic bounded state observation did not complete after " + clock.Elapsed.TotalSeconds + " seconds. " + diagnostics?.Invoke());
  }
  // The key is synthetic and is never enrolled. Reuse its parameters across fixtures
  // so repeated processor key generation does not dominate cancellation coverage.
@@ -185,14 +187,16 @@ public sealed class SignedLanCoreDiagnosticTests
  {
   internal RSA Key; internal DriverLogger Logger; internal TeslaPowerwallDriver Driver;
   internal SignedHandler Handler; internal PowerwallTedapiClient Transport;
+  internal string Describe(Task loop) => "Status="+Driver.StatusSummary+"; loop="+loop.Status+"; exception="+loop.Exception?.GetBaseException()+"; stages="+string.Join(",",Handler.Stages)+"; refresh="+typeof(TeslaPowerwallDriver).GetField("_refreshInProgress",Private).GetValue(Driver)+"; gate="+((SemaphoreSlim)typeof(TeslaPowerwallDriver).GetField("_connectionGate",Private).GetValue(Driver)).CurrentCount;
   internal Task Poll(CancellationToken token) => (Task)typeof(TeslaPowerwallDriver).GetMethod("RunPollAsync", Private).Invoke(Driver,new object[]{token});
-  internal static async Task<Rig> Create(int httpTimeoutSeconds=15)
+  internal static async Task<Rig> Create(bool realSigning=false,int httpTimeoutSeconds=15)
   {
    var rig = new Rig();
    try
    {
-    rig.Key = new RSACryptoServiceProvider(4096){PersistKeyInCsp=false};
-    rig.Key.FromXmlString(SyntheticKey.Value);
+    var importedKey = new RSACryptoServiceProvider(4096){PersistKeyInCsp=false};
+    importedKey.FromXmlString(SyntheticKey.Value);
+    rig.Key = realSigning ? importedKey : new TransportTestRsa(importedKey);
     var options = new PowerwallOptions {Host="192.0.2.1", Password="synthetic",
      LocalProtocol=PowerwallLocalProtocol.TedapiSigned, LocalSigningKey=rig.Key,
      CacheExpireSeconds=15, Timeout=TimeSpan.FromSeconds(httpTimeoutSeconds), NoLocalSessionPersistence=true,AllowLocalControl=false};
@@ -215,6 +219,22 @@ public sealed class SignedLanCoreDiagnosticTests
    } catch {rig.Dispose();throw;}
   }
   public void Dispose(){Driver?.Dispose();if(Driver==null)Transport?.Dispose();Logger?.Dispose();Key?.Dispose();}
+ }
+ // Synthetic HTTP timing cases do not verify signatures. Preserve a real 4096-bit
+ // identity and protocol-sized signature without making CPU signing latency part of
+ // their timeout oracle. The realSigning case and live installed driver use real RSA.
+ private sealed class TransportTestRsa : RSA
+ {
+  private readonly RSA key;
+  internal TransportTestRsa(RSA key) { this.key=key; }
+  public override int KeySize { get=>key.KeySize; set=>throw new NotSupportedException(); }
+  public override RSAParameters ExportParameters(bool includePrivateParameters)=>key.ExportParameters(includePrivateParameters);
+  public override void ImportParameters(RSAParameters parameters)=>throw new NotSupportedException();
+  public override byte[] SignHash(byte[] hash,HashAlgorithmName hashAlgorithm,RSASignaturePadding padding)=>new byte[KeySize/8];
+  public override bool VerifyHash(byte[] hash,byte[] signature,HashAlgorithmName hashAlgorithm,RSASignaturePadding padding)=>key.VerifyHash(hash,signature,hashAlgorithm,padding);
+  public override byte[] Encrypt(byte[] data,RSAEncryptionPadding padding)=>throw new NotSupportedException();
+  public override byte[] Decrypt(byte[] data,RSAEncryptionPadding padding)=>throw new NotSupportedException();
+  protected override void Dispose(bool disposing) { if(disposing)key.Dispose();base.Dispose(disposing); }
  }
  private sealed class SignedHandler : HttpMessageHandler
  {
