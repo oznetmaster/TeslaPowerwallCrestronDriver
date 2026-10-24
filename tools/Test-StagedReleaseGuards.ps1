@@ -37,6 +37,20 @@ try {
     try { [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,$pkg,'TeslaPowerwallCrestronDriver.pkg') | Out-Null } finally { $archive.Dispose() }
     Save-Receipt
     Verify; $checks++
+    $cleanPkg = [IO.File]::ReadAllBytes($pkg)
+    $cleanNuget = [IO.File]::ReadAllBytes($nupkg)
+    $archive = [IO.Compression.ZipFile]::Open($pkg,[IO.Compression.ZipArchiveMode]::Update)
+    try { $archive.CreateEntry('Licenses\fixture.txt') | Out-Null } finally { $archive.Dispose() }
+    $archive = [IO.Compression.ZipFile]::Open($nupkg,[IO.Compression.ZipArchiveMode]::Update)
+    try {
+        $archive.GetEntry('TeslaPowerwallCrestronDriver.pkg').Delete()
+        [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,$pkg,'TeslaPowerwallCrestronDriver.pkg') | Out-Null
+    } finally { $archive.Dispose() }
+    Save-Receipt
+    Reject { Verify }
+    [IO.File]::WriteAllBytes($pkg,$cleanPkg)
+    [IO.File]::WriteAllBytes($nupkg,$cleanNuget)
+    Save-Receipt
     Reject { & "$PSScriptRoot/Assert-StagedRelease.ps1" -Directory $directory -Version $version -Commit ('b'*40) -BuildRunId 123 }
     Reject { & "$PSScriptRoot/Assert-StagedRelease.ps1" -Directory $directory -Version $version -Commit $commit -BuildRunId 124 }
     $original = [IO.File]::ReadAllBytes($pkg)

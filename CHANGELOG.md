@@ -7,6 +7,7 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 ## 2.0.7 — 2026-10-24
 
 - Update TeslaPowerwallLibrary to 2.3.1, including the signed-request expiry correction for slower RSA signing and inherited wired/Wi-Fi meter mapping fixes. Maximum-power ratings and additional PW2 diagnostic readings remain library capabilities; this driver does not expose them.
+- Normalize package ZIP entry paths before staging to prevent processor importer errors about backslash separators.
 - Hide the redundant Refresh Now button for local connections; retain the programmable refresh command.
 
 - Record local poll failure stage, elapsed time and request/lifetime cancellation origin without adding requests.

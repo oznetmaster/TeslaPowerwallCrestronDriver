@@ -19,6 +19,12 @@ foreach ($name in $required) {
 if (@(Get-ChildItem -LiteralPath $Directory -File).Count -ne ($required.Count + 1)) { throw 'Unexpected staged files.' }
 & "$PSScriptRoot/Assert-DriverPackageVersion.ps1" -PackagePath (Join-Path $Directory 'TeslaPowerwallCrestronDriver.pkg') -ManifestPath "$PSScriptRoot/../TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.json" -ReleaseVersion $Version
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+$driverArchive = [IO.Compression.ZipFile]::OpenRead((Join-Path $Directory 'TeslaPowerwallCrestronDriver.pkg'))
+try {
+    $names = @($driverArchive.Entries | ForEach-Object FullName)
+    if (@($names | Where-Object { $_.Contains('\') }).Count) { throw 'Driver ZIP entries must use forward slashes.' }
+    if (@($names | Sort-Object -Unique -CaseSensitive).Count -ne $names.Count) { throw 'Duplicate driver ZIP entries.' }
+} finally { $driverArchive.Dispose() }
 $archive = [IO.Compression.ZipFile]::OpenRead((Join-Path $Directory "CrestronHomeDriver.Tesla.Powerwall.$Version.nupkg"))
 try {
     $entry = @($archive.Entries | Where-Object FullName -CEQ 'crestron-driver-package.json')

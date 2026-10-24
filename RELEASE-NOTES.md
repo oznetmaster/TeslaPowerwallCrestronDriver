@@ -4,6 +4,7 @@ This patch updates TeslaPowerwallLibrary to 2.3.1 and includes the local polling
 
 ## Changes
 
+- Normalize package ZIP entry paths before staging to prevent processor importer errors about backslash separators.
 - Publish Offline feedback after a failed required API observation and recover only after a fresh successful observation and data poll.
 - Reuse the required battery read for availability instead of sending recurring TCP probes. Keep data polls and state-changing commands serialized.
 - Apply the 15-second timeout to each API request, allowing individually valid sequential requests to take longer in total. Back off repeated local failures and restore the configured interval after recovery.
