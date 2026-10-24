@@ -1,6 +1,6 @@
 # Test package 2.0.7
 
-- Validate the 2.0.7 driver against TeslaPowerwallLibrary 2.3.0 with 92 unit and 88 processor lifecycle cases.
+- Validate the 2.0.7 driver against TeslaPowerwallLibrary 2.3.1 with 92 unit and 88 processor lifecycle cases.
 - Cover fresh API availability, bounded failure backoff, per-request timeout, lifetime cancellation, serialized commands and local Refresh button visibility.
 - Classify SDK-dependent fixtures for their supported runtime. Use portable RSA-4096 setup and packaged UI path casing, and measure HTTP timeout independently of RSA signing time.
 - The six local read-only live cases and three common cloud live cases remain explicitly selected; no fixture enrolls a key or sends a Powerwall control command.
