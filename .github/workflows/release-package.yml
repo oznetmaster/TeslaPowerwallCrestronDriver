@@ -3,6 +3,17 @@ name: Release Package
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: Prepared three-part release version
+        required: true
+        type: string
+      publish:
+        description: Promote a successful, hardware-validated staging run without rebuilding
+        default: false
+        type: boolean
+      staged_run_id:
+        description: Successful preparation run to promote
+        type: string
       skip_hardware_checks:
         description: Publish without hardware validation when the processor or local runner is unavailable
         required: false
@@ -12,9 +23,6 @@ on:
         description: Reason for skipping hardware checks (required when selected)
         required: false
         type: string
-  release:
-    types:
-      - published
 
 permissions:
   actions: read
@@ -23,7 +31,7 @@ permissions:
 
 jobs:
   build-and-upload-package:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    if: ${{ !inputs.publish }}
     runs-on: windows-latest
     env:
       MANIFESTUTIL_VERSION: 29.0.10
@@ -129,20 +137,10 @@ jobs:
       - name: Write release notes
         id: release_notes
         shell: pwsh
-        env:
-          RELEASE_BODY: ${{ github.event.release.body }}
         run: |
-          # Reuses the published GitHub Release's description as the NuGet package's release notes, so the
-          # two stay in sync without duplicating the text. Only populated for an actual "release" event;
-          # a manual workflow_dispatch run has no release body, so the NuGet package simply omits notes.
-          $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.txt'
-          if (-not [string]::IsNullOrWhiteSpace($env:RELEASE_BODY)) {
-            Set-Content -Path $notesPath -Value $env:RELEASE_BODY -Encoding UTF8 -NoNewline
-            "path=$notesPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          }
-          else {
-            "path=" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          }
+          if ((Get-Content RELEASE-NOTES.md -TotalCount 1) -cne ('# TeslaPowerwallCrestronDriver ' + '${{ inputs.version }}')) { throw 'Release notes/version mismatch.' }
+          Copy-Item RELEASE-NOTES.md "$env:RUNNER_TEMP/release-notes.txt"
+          "path=$env:RUNNER_TEMP/release-notes.txt" >> $env:GITHUB_OUTPUT
 
       - name: Verify driver version rules
         shell: pwsh
@@ -152,10 +150,7 @@ jobs:
         id: package_version
         shell: pwsh
         run: |
-          $refName = if ($env:GITHUB_EVENT_NAME -eq 'release' -and $env:GITHUB_EVENT_PATH) {
-            (Get-Content -LiteralPath $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json).release.tag_name
-          } else { $env:GITHUB_REF_NAME }
-          $selected = & ./tools/Get-DriverReleaseVersion.ps1 -ManifestPath @('./TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.json') -Tag $refName -RequireTag:($env:GITHUB_EVENT_NAME -eq 'release')
+          $selected = & ./tools/Get-DriverReleaseVersion.ps1 -ManifestPath @('./TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.json') -Tag ('v' + '${{ inputs.version }}') -RequireTag
           "value=$($selected.PackageVersion)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "driver=$($selected.DriverReleaseVersion)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "tag=$($selected.Tag)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
@@ -264,34 +259,85 @@ jobs:
 
           "nupkg_path=$($nupkg.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
-      - name: Publish NuGet package
+      - name: Stage immutable release assets
+        shell: pwsh
+        run: |
+          $destination = 'artifacts/release'
+          New-Item -ItemType Directory -Path $destination -Force | Out-Null
+          $paths = @(
+            '${{ steps.package.outputs.pkg_path }}',
+            '${{ steps.nuget_package.outputs.nupkg_path }}',
+            "$env:RUNNER_TEMP/local-provisioning-release/TeslaPowerwallLocalSetup-win-x64.zip",
+            "$env:RUNNER_TEMP/PRODUCT-SHA256SUMS.txt",
+            'TeslaPowerwallCrestronDriver.ProcessorTests/bin/Release/net472/TeslaPowerwallCrestronDriver.ProcessorTests.pkg',
+            'TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests-Documentation.zip',
+            'TeslaPowerwallCrestronDriver.ProcessorTests/TeslaPowerwallCrestronDriver.ProcessorTests.sources.json',
+            'TeslaPowerwallCrestronDriver.ProcessorTests/PROCESSOR-TESTS-SHA256SUMS.txt'
+          )
+          foreach ($path in $paths) { Copy-Item -LiteralPath $path -Destination $destination -ErrorAction Stop }
+          $files = @(Get-ChildItem $destination -File | ForEach-Object { @{ Name=$_.Name; Sha256=(Get-FileHash $_.FullName).Hash } })
+          @{ Repository=$env:GITHUB_REPOSITORY; Commit=$env:GITHUB_SHA; Version='${{ inputs.version }}'; BuildRunId=$env:GITHUB_RUN_ID; Files=$files } | ConvertTo-Json -Depth 5 | Set-Content "$destination/StagedRelease.json"
+          ./tools/Assert-StagedRelease.ps1 -Directory $destination -Version '${{ inputs.version }}' -Commit $env:GITHUB_SHA -BuildRunId $env:GITHUB_RUN_ID
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release/*
+          if-no-files-found: error
+
+  promote:
+    if: inputs.publish
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Verify exact tag and preparation provenance
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          STAGED_RUN_ID: ${{ inputs.staged_run_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $selected = ./tools/Get-DriverReleaseVersion.ps1 -ManifestPath TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.json -Tag ('v' + $env:REQUESTED_VERSION) -RequireTag
+          if ($env:GITHUB_REF_TYPE -cne 'tag' -or $env:GITHUB_REF_NAME -cne $selected.Tag) { throw 'Promote only from the exact existing release tag.' }
+          if ($env:STAGED_RUN_ID -notmatch '^[0-9]+$') { throw 'A successful staging run ID is required.' }
+          $head = (git rev-parse HEAD).Trim()
+          $tagHead = (git rev-parse "$($selected.Tag)^{commit}").Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $tagHead) { throw 'Release tag/source mismatch.' }
+          if ((Get-Content RELEASE-NOTES.md -TotalCount 1) -cne ('# TeslaPowerwallCrestronDriver ' + $env:REQUESTED_VERSION)) { throw 'Release notes/version mismatch.' }
+          $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:STAGED_RUN_ID" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $run.head_repository.full_name -cne $env:GITHUB_REPOSITORY -or $run.head_sha -cne $head -or $run.path -cne '.github/workflows/release-package.yml' -or $run.event -cne 'workflow_dispatch' -or $run.conclusion -cne 'success') { throw 'Preparation has invalid source, workflow or outcome.' }
+          $jobs = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:STAGED_RUN_ID/jobs" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or @($jobs.jobs | Where-Object { $_.name -ceq 'build-and-upload-package' -and $_.conclusion -ceq 'success' }).Count -ne 1) { throw 'Preparation did not build assets successfully.' }
+          gh run download $env:STAGED_RUN_ID --repo $env:GITHUB_REPOSITORY --name release-assets --dir artifacts/release
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot download staged release.' }
+          ./tools/Assert-StagedRelease.ps1 -Directory artifacts/release -Version $env:REQUESTED_VERSION -Commit $head -BuildRunId $env:STAGED_RUN_ID
+      - name: Require current source checks
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUIRED_RELEASE_CHECKS: ${{ vars.RELEASE_REQUIRED_CHECKS }}
+          REQUIRED_HOSTED_WORKFLOWS: '["tests.yml","workflow-discovery.yml","nunit5-policy.yml"]'
+        run: ./.github/scripts/Wait-RequiredReleaseChecks.ps1
+      - name: Publish the staged NuGet distribution
         shell: pwsh
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) {
-            throw 'NUGET_API_KEY secret is not configured.'
-          }
-
-          dotnet nuget push "${{ steps.nuget_package.outputs.nupkg_path }}" --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
-
-      - name: Upload package artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: TeslaPowerwallCrestronDriver-pkg
-          path: ${{ steps.package.outputs.pkg_path }}
-          if-no-files-found: error
-
-      - name: Upload package asset
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
-          files: |
-            ${{ steps.package.outputs.pkg_path }}
-            ${{ runner.temp }}/local-provisioning-release/TeslaPowerwallLocalSetup-win-x64.zip
-            ${{ runner.temp }}/PRODUCT-SHA256SUMS.txt
-            TeslaPowerwallCrestronDriver.ProcessorTests/bin/Release/net472/TeslaPowerwallCrestronDriver.ProcessorTests.pkg
-            TeslaPowerwallCrestronDriver.ProcessorTests/*-Documentation.zip
-            TeslaPowerwallCrestronDriver.ProcessorTests/*.sources.json
-            TeslaPowerwallCrestronDriver.ProcessorTests/PROCESSOR-TESTS-SHA256SUMS.txt
-          fail_on_unmatched_files: true
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_API_KEY)) { throw 'NUGET_API_KEY is not configured.' }
+          dotnet nuget push "artifacts/release/CrestronHomeDriver.Tesla.Powerwall.${{ inputs.version }}.nupkg" --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json
+          if ($LASTEXITCODE -ne 0) { throw 'NuGet publication failed.' }
+      - name: Publish the same staged assets on GitHub
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ inputs.version }}
+        run: |
+          $files = @(Get-ChildItem artifacts/release -File | ForEach-Object FullName)
+          gh release create $env:RELEASE_TAG @files --verify-tag --title "TeslaPowerwallCrestronDriver ${{ inputs.version }}" --notes-file RELEASE-NOTES.md
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed.' }

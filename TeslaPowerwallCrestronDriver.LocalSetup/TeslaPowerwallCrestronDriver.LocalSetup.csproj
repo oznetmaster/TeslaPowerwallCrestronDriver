@@ -7,7 +7,7 @@
     <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS4014</WarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="TeslaPowerwallLibrary" Version="2.1.0" />
+    <PackageReference Include="TeslaPowerwallLibrary" Version="2.3.0" />
     <InternalsVisibleTo Include="TeslaPowerwallCrestronDriver.LocalSetup.Tests" />
     <None Update="README.md" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" />

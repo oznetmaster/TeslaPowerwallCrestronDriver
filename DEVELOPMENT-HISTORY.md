@@ -1,5 +1,13 @@
 # Development and validation history
 
+## Patch preparation - 2.0.7 (2026-10-24)
+
+- Update every production/tooling TeslaPowerwallLibrary reference to the public 2.3.0 package. Include the committed local polling, cancellation, diagnostics and refresh-visibility corrections since 2.0.0.
+- Local desktop SDK discovery matched all 189 passing offline cases, including provisioning fixtures; six live cases were discovered separately. The existing generated-build CS0162 warning remains visible.
+- Release/version/discovery policy checks passed. Seven additional staging checks cover exact provenance, changed inventory/bytes and a NuGet wrapper whose embedded payload differs from the standalone driver.
+- Split preparation from publication. Promotion requires the exact existing release tag, a successful preparation job for the same repository/commit, unchanged asset checksums and the current release checks. Reuse validated package bytes without rebuilding.
+- Use TestAdapter 3.0.0 and processor-independent RoomName selection. Processor and read-only live receipts are retained outside source control and must pass before publication.
+
 ## Local connection correction and major release - 2.0.0
 
 - Supersede the 1.2 series with 2.0.0: existing Entity V2 instances support an in-place update, followed by required reconfiguration. The 1.2.1 candidate was not published.

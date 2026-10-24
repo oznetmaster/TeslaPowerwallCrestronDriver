@@ -1,8 +1,8 @@
 # TeslaPowerwallCrestronDriver processor workflow
 
-This .NET 10 test container integrates the processor workflow with Visual Studio Test Explorer and VSTest. It uses the published **CrestronHomeNUnit.TestAdapter 2.3.0**. The existing NUnit test projects and net472 processor package remain separate.
+This .NET 10 test container integrates the processor workflow with Visual Studio Test Explorer and VSTest. It uses the published **CrestronHomeNUnit.TestAdapter 3.0.0**. The existing NUnit test projects and net472 processor package remain separate.
 
-Before launching Visual Studio, set `CRESTRON_HOME_TESLAPOWERWALLCRESTRONDRIVER_WORKFLOW_SETTINGS` to the absolute path of your private adapter-settings JSON file. That file contains `planPath`, `userName` and `password`; the referenced private plan specifies your processor, certificate fingerprints, source/build paths, required suites, live inputs and cleanup. Keep these files outside the repository, or use `.git/info/exclude` for any private local file. Never commit them or upload results containing private inputs.
+Before launching Visual Studio, set `CRESTRON_HOME_TESLAPOWERWALLCRESTRONDRIVER_WORKFLOW_SETTINGS` to the absolute path of your private adapter-settings JSON file. That file contains `planPath`, `userName` and `password`; the referenced private plan selects the room by `RoomName` (for example, `Office`), and specifies your processor, certificate fingerprints, source/build paths, required suites, live inputs and cleanup. Keep these files outside the repository, or use `.git/info/exclude` for any private local file. Never commit them or upload results containing private inputs.
 
 Select **TeslaPowerwallCrestronDriver processor workflow** in Test Explorer. The workflow runs the local tests itself, then builds/deploys the processor package, waits for activation, runs the required processor suites and removes its test instance when `removeTestInstanceAfterRun` is true. Optional live suites and actual-driver updates run only when explicitly included in the private plan. Discovery is offline and never operates the processor. Attempting execution without private settings fails.
 

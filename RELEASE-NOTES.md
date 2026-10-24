@@ -1,26 +1,21 @@
-# TeslaPowerwallCrestronDriver 2.0.0
+# TeslaPowerwallCrestronDriver 2.0.7
 
-**Update in place, then reconfigure.** This Entity V2 driver can update the existing installed instance. After applying the update, reopen Configure and complete the new configuration dialogs, even when retaining Owner or Fleet cloud access. Do not remove and re-add the driver. The required reconfiguration is why this is a major release.
+This patch updates TeslaPowerwallLibrary to 2.3.0 and includes the local polling reliability fixes developed since 2.0.0.
 
-## New local access
+## Changes
 
-- Connect through Gateway or signed Powerwall 3 access over Ethernet or normal home-network Wi-Fi, using TeslaPowerwallLibrary 2.1.0.
-- Configure local polling from 15 to 3600 seconds, with a default of 15 seconds between completed polls.
-- Local controls are read-only by default. Explicitly enable supported setting changes when required; unavailable device values remain unavailable.
-- Optionally configure cloud history using separate credentials and the exact numeric ID of the local site. Local monitoring stays independent of cloud history.
-- Use the included Windows provisioning tool to enroll an independent signing key. Normal local operation needs neither that tool nor a cloud connection.
+- Publish Offline feedback after a failed required API observation and recover only after a fresh successful observation and data poll.
+- Reuse the required battery read for availability instead of sending recurring TCP probes. Keep data polls and state-changing commands serialized.
+- Apply the 15-second timeout to each API request, allowing individually valid sequential requests to take longer in total. Back off repeated local failures and restore the configured interval after recovery.
+- Pass driver-lifetime cancellation into control requests and reject results from superseded clients.
+- Record the failed polling stage, elapsed time and cancellation origin without additional requests.
+- Hide the redundant Refresh Now button for local connections. The programmable refresh command remains available.
+- Inherit the library's wired/Wi-Fi remote-meter mapping fixes. Newly available maximum-power ratings and PW2 vitals are not added to the driver's UI or programmable interface.
 
-## Upgrade instructions
+## Installation and upgrade
 
-1. Before updating, record the current connection/settings and have its credentials available to enter again. **Configuration retention during reconfiguration is not guaranteed.** Be prepared to obtain a fresh cloud credential if needed; retain the private provisioning profile/export for an existing signed local connection.
-2. Import `TeslaPowerwallCrestronDriver.pkg`, then apply the update to the existing instance in Crestron Home Setup.
-3. Reopen Configure and complete the new dialogs. Review every field and re-enter anything missing or incorrect. Choose **Cloud** for Owner/Fleet, or **Gateway**/**Signed LAN** for a local connection. Review the credentials, site and polling intervals. Set local control permission and optional cloud history explicitly when using local access.
-4. Save and confirm version **2.0.000.0000**, the room assignment, online status and live readings. Check any programmed commands/events before returning the installation to service.
+Use the [Crestron Home Driver Feed Installer](https://github.com/oznetmaster/Crestron-Home-Driver-Feed-Installer), or download `TeslaPowerwallCrestronDriver.pkg` from this release and update the existing instance through Crestron Home Setup. Confirm version **2.0.007.0000**, the configured site and live readings. The package does not require a configuration-schema migration from 2.0.0. Installations older than 2.0.0 must follow the major-version reconfiguration instructions in the README.
 
-Importing the package without updating the instance and completing configuration is not sufficient. Existing Owner/Fleet modes and programmable interfaces remain available; this does not guarantee retention of stored settings or credentials. The 1.2.0 publication is superseded; the prepared 1.2.1 version was not published.
+The NuGet package `CrestronHomeDriver.Tesla.Powerwall` is a distribution wrapper for the final `.pkg`, with the community `crestron-driver-package.json` manifest; it is not a DLL-reference package or an official Crestron publishing specification. GitHub's automatic source archives are not installable driver packages.
 
-## Downloads and validation
-
-The release includes the driver `.pkg`, Windows x64 provisioning tool with its runtime and documentation, and separate processor test assets with source identities and checksums. The NuGet distribution is `CrestronHomeDriver.Tesla.Powerwall`.
-
-Offline suites cover the installer choices, unsupported-mode rejection, driver lifecycle and provisioning. Read-only live validation covered Owner, Fleet, Gateway and signed LAN; rendered Android checks covered the signed-LAN candidate. Gateway data is less complete than signed TEDAPI, and processor Gateway validation used an IP address rather than `.local` discovery. No Powerwall setting changes are needed for this update.
+Cloud/history cadence and existing commands, properties and events remain compatible. The local polling interval is not a universal processor-resource or physical-loss-detection guarantee. See the development history for validation evidence and limitations.

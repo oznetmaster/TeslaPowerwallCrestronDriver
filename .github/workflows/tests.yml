@@ -32,7 +32,9 @@ jobs:
       - name: Install processor packaging tools
         run: ./tools/InstallCiTools.ps1
       - name: Verify discovery coverage guards
-        run: ./tools/Test-DiscoveredCoverageGuards.ps1
+        run: |
+          ./tools/Test-DiscoveredCoverageGuards.ps1
+          ./tools/Test-StagedReleaseGuards.ps1
       - name: Run NUnit driver tests
         run: |
           ./tools/Test-DiscoveredCoverage.ps1 -Stage Desktop -Project TeslaPowerwallCrestronDriver.Tests/TeslaPowerwallCrestronDriver.Tests.csproj -Framework net472 -AllowProcessorSkips -ResultsDirectory TestResults

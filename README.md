@@ -32,7 +32,7 @@ Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent
 
 This driver is a **Crestron Home energy-automation Entity V2 driver** implemented on the **Crestron Home SDK Entity V2 Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
 
-The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using TeslaPowerwallLibrary 2.1.0. Cloud connections obtain and renew access tokens from their configured refresh token. Local connections use their own endpoint and credentials; they do not require a running Windows application.
+The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using TeslaPowerwallLibrary 2.3.0. Cloud connections obtain and renew access tokens from their configured refresh token. Local connections use their own endpoint and credentials; they do not require a running Windows application.
 
 ---
 
@@ -335,7 +335,7 @@ GitHub-hosted validation remains mandatory for the checked-out source, and the n
 
 All maintained suites use NUnit 5.0.0 and NUnit3TestAdapter 6.3.0. Workflow and Android tests use CrestronHomeNUnit.TestAdapter 2.3.0; processor packages use the pinned public SDK 2.3.0 source. See the [test dependency and live-input guide](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.Tests/README.md).
 
-The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 87 unit and 29 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.
+The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 107 unit and 75 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.
 
 ### Local poll failure diagnostics
 

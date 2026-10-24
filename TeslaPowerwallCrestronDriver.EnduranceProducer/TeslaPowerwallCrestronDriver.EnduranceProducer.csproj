@@ -7,6 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CrestronHomeDevTools" Version="1.26.2" />
-    <PackageReference Include="TeslaPowerwallLibrary" Version="2.1.0" />
+    <PackageReference Include="TeslaPowerwallLibrary" Version="2.3.0" />
   </ItemGroup>
 </Project>
