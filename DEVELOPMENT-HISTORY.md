@@ -2,7 +2,9 @@
 
 ## Patch preparation - 2.0.7 (2026-10-24)
 
-- Update every production/tooling TeslaPowerwallLibrary reference to the public 2.3.0 package. Include the committed local polling, cancellation, diagnostics and refresh-visibility corrections since 2.0.0.
+- Exact-package live validation exposed the library's 13-second signature lifetime expiring during 18-21-second processor RSA signing. Read-only comparisons reproduced the rejection and confirmed the focused 2.3.1 library correction to 60 seconds. Retain the independent 15-second HTTP timeout. Live UI assertions now use one completed poll snapshot, and the whole-suite deadline allows five minutes; subsequent real meter reads remain independently validated. The diagnostic run passed all six native live checks and cleaned up its temporary instance and reservations.
+
+- Update every production/tooling TeslaPowerwallLibrary reference to the public 2.3.1 package. Include the committed local polling, cancellation, diagnostics and refresh-visibility corrections since 2.0.0.
 - Local desktop SDK discovery matched all 191 passing offline cases, including provisioning fixtures; six live cases were discovered separately. The existing generated-build CS0162 warning remains visible.
 - Release/version/discovery policy checks passed. Seven additional staging checks cover exact provenance, changed inventory/bytes and a NuGet wrapper whose embedded payload differs from the standalone driver.
 - Split preparation from publication. Promotion requires the exact existing release tag, a successful preparation job for the same repository/commit, unchanged asset checksums and the current release checks. Reuse validated package bytes without rebuilding.

@@ -20,18 +20,24 @@ public sealed partial class LiveSiteTests
 		{
 		RequireLocal ();
 		await Poll ();
+		// Capture one completed poll. A later gateway read can legitimately differ
+		// once RSA signing has outlasted the telemetry cache on the processor.
+		string solar = _driver.SolarPowerDisplay;
+		string load = _driver.LoadPowerDisplay;
+		var state = _driver.GetState ();
+		Assert.That (solar, Does.Match (@"^-?[0-9]+[.][0-9] kW$"));
+		Assert.That (load, Does.Match (@"^-?[0-9]+[.][0-9] kW(?: \(Grid Offline\))?$"));
+		Assert.That (state.PropertyValues["solarPowerDisplay"].GetValue<string> (), Is.EqualTo (solar));
+		Assert.That (state.PropertyValues["loadPowerDisplay"].GetValue<string> (), Is.EqualTo (load));
+		foreach (string property in new[] { "solarPowerDisplay", "loadPowerDisplay", "gridPowerDisplay", "batteryLevelDisplay" })
+			{
+			Assert.That (state.PropertyValues.ContainsKey (property), Is.True, "The UI property must be published: " + property);
+			Assert.That (state.PropertyValues[property].GetValue<string> (), Is.Not.Null.And.Not.Empty.And.Not.EqualTo ("--"));
+			}
 		var power = await _client.GetPowerReadingsAsync (_deadline.Token);
 		Assert.That (new[] { power.Site, power.Solar, power.Battery, power.Load }
 			.All (value => value.HasValue && !double.IsNaN (value.Value) && !double.IsInfinity (value.Value)), Is.True,
 			"Local meters must report finite readings; missing readings must not pass as zero.");
-		Assert.That (_driver.SolarPowerDisplay, Is.EqualTo (TestSupport.Call<string> (typeof (TeslaPowerwallDriver), "FormatPower", power.Solar)));
-		Assert.That (_driver.LoadPowerDisplay, Does.StartWith (TestSupport.Call<string> (typeof (TeslaPowerwallDriver), "FormatPower", power.Load)));
-		foreach (string property in new[] { "solarPowerDisplay", "loadPowerDisplay", "gridPowerDisplay", "batteryLevelDisplay" })
-			{
-			var state = _driver.GetState ();
-			Assert.That (state.PropertyValues.ContainsKey (property), Is.True, "The UI property must be published: " + property);
-			Assert.That (state.PropertyValues[property].GetValue<string> (), Is.Not.Null.And.Not.Empty.And.Not.EqualTo ("--"));
-			}
 		}
 
 	/// <summary>Checks local read-only controls and cloud-history visibility against the actual UI bindings.</summary>

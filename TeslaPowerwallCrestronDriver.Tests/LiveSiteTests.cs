@@ -72,7 +72,7 @@ public sealed partial class LiveSiteTests
 		if (Type.GetType ("Mono.Runtime") == null)
 			Assert.Ignore ("Run live fixtures through the desktop SDK harness or processor runtime.");
 #endif
-		_deadline = new CancellationTokenSource (TimeSpan.FromMinutes (3));
+		_deadline = new CancellationTokenSource (TimeSpan.FromMinutes (5));
 		_logger = new DriverLogger ("powerwall-live-test") { AppLogger = new QuietLogger () };
 		_driver = new TeslaPowerwallDriver (new DriverControllerCreationArgs ("powerwall-live-test", TestSupport.DataDirectory, _logger.AppLogger, null), TestSupport.Resources (_logger));
 		bool fleet = _settings.Mode == "fleet";

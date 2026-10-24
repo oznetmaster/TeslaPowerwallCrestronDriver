@@ -1,6 +1,6 @@
 # TeslaPowerwallCrestronDriver 2.0.7
 
-This patch updates TeslaPowerwallLibrary to 2.3.0 and includes the local polling reliability fixes developed since 2.0.0.
+This patch updates TeslaPowerwallLibrary to 2.3.1 and includes the local polling reliability fixes developed since 2.0.0.
 
 ## Changes
 
@@ -10,6 +10,7 @@ This patch updates TeslaPowerwallLibrary to 2.3.0 and includes the local polling
 - Pass driver-lifetime cancellation into control requests and reject results from superseded clients.
 - Record the failed polling stage, elapsed time and cancellation origin without additional requests.
 - Hide the redundant Refresh Now button for local connections. The programmable refresh command remains available.
+- Fix signed LAN requests expiring during slower processor RSA signing through the library's finite 60-second signature window. The HTTP timeout stays 15 seconds.
 - Inherit the library's wired/Wi-Fi remote-meter mapping fixes. Newly available maximum-power ratings and PW2 vitals are not added to the driver's UI or programmable interface.
 
 ## Installation and upgrade
