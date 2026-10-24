@@ -223,13 +223,24 @@ public sealed class SignedLanCoreDiagnosticTests
  // Synthetic HTTP timing cases do not verify signatures. Preserve a real 4096-bit
  // identity and protocol-sized signature without making CPU signing latency part of
  // their timeout oracle. The realSigning case and live installed driver use real RSA.
- private sealed class TransportTestRsa : RSA
+ internal sealed class TransportTestRsa : RSA
  {
   private readonly RSA key;
   internal TransportTestRsa(RSA key) { this.key=key; }
   public override int KeySize { get=>key.KeySize; set=>throw new NotSupportedException(); }
   public override RSAParameters ExportParameters(bool includePrivateParameters)=>key.ExportParameters(includePrivateParameters);
   public override void ImportParameters(RSAParameters parameters)=>throw new NotSupportedException();
+  // .NET Framework's RSA base class requires both hashing overloads; .NET 10 supplies defaults.
+  protected override byte[] HashData(byte[] data,int offset,int count,HashAlgorithmName hashAlgorithm)
+  {
+   if(hashAlgorithm!=HashAlgorithmName.SHA512)throw new NotSupportedException();
+   using var hash=SHA512.Create();return hash.ComputeHash(data,offset,count);
+  }
+  protected override byte[] HashData(System.IO.Stream data,HashAlgorithmName hashAlgorithm)
+  {
+   if(hashAlgorithm!=HashAlgorithmName.SHA512)throw new NotSupportedException();
+   using var hash=SHA512.Create();return hash.ComputeHash(data);
+  }
   public override byte[] SignHash(byte[] hash,HashAlgorithmName hashAlgorithm,RSASignaturePadding padding)=>new byte[KeySize/8];
   public override bool VerifyHash(byte[] hash,byte[] signature,HashAlgorithmName hashAlgorithm,RSASignaturePadding padding)=>key.VerifyHash(hash,signature,hashAlgorithm,padding);
   public override byte[] Encrypt(byte[] data,RSAEncryptionPadding padding)=>throw new NotSupportedException();

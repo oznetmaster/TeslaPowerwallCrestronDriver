@@ -56,6 +56,22 @@ public sealed class LocalAvailabilityTests
   Assert.That(handler.Paths,Is.EqualTo(new[]{"/api/system_status/soe","/api/meters/aggregates","/api/system_status/grid_status","/api/operation"}));
   Assert.That(driver.OnlineIndicatorIsOnline,Is.True);Assert.That(driver.ReadyIndicatorIsReady,Is.True);
  }
+ [Test]
+ public void TransportTimingSignerSupportsFrameworkByteRangeAndStreamHashing()
+ {
+  using var key=new SignedLanCoreDiagnosticTests.TransportTestRsa(new IdentityOnlyRsa());
+  byte[] data={1,2,3};
+  Assert.That(key.SignData(data,System.Security.Cryptography.HashAlgorithmName.SHA512,System.Security.Cryptography.RSASignaturePadding.Pkcs1),Has.Length.EqualTo(512));
+  Assert.That(key.SignData(data,1,2,System.Security.Cryptography.HashAlgorithmName.SHA512,System.Security.Cryptography.RSASignaturePadding.Pkcs1),Has.Length.EqualTo(512));
+  using var stream=new System.IO.MemoryStream(data);
+  Assert.That(key.SignData(stream,System.Security.Cryptography.HashAlgorithmName.SHA512,System.Security.Cryptography.RSASignaturePadding.Pkcs1),Has.Length.EqualTo(512));
+ }
+ private sealed class IdentityOnlyRsa:System.Security.Cryptography.RSA
+ {
+  public override int KeySize {get=>4096;set=>throw new NotSupportedException();}
+  public override System.Security.Cryptography.RSAParameters ExportParameters(bool includePrivateParameters)=>new(){Modulus=new byte[512],Exponent=new byte[]{1,0,1}};
+  public override void ImportParameters(System.Security.Cryptography.RSAParameters parameters)=>throw new NotSupportedException();
+ }
  private sealed class CoreHandler:HttpMessageHandler
  {
   internal readonly System.Collections.Generic.List<string> Paths=new();

@@ -335,7 +335,7 @@ GitHub-hosted validation remains mandatory for the checked-out source, and the n
 
 All maintained suites use NUnit 5.0.0 and NUnit3TestAdapter 6.3.0. Workflow and Android tests use CrestronHomeNUnit.TestAdapter 2.3.0; processor packages use the pinned public SDK 2.3.0 source. See the [test dependency and live-input guide](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.Tests/README.md).
 
-The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 91 unit and 88 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.
+The release includes `TeslaPowerwallCrestronDriver.ProcessorTests.pkg`, its documentation, exact source revisions and checksums. Automatic suites contain 92 unit and 88 lifecycle cases. Live suites are explicitly selected and require private inputs; they never change power settings. The desktop SDK harness additionally tests Windows provisioning. See [processor instructions](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/blob/master/TeslaPowerwallCrestronDriver.ProcessorTests/README.md) for installation and execution.
 
 ### Local poll failure diagnostics
 
