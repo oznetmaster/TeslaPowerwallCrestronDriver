@@ -6,6 +6,7 @@
 - Local desktop SDK discovery matched all 189 passing offline cases, including provisioning fixtures; six live cases were discovered separately. The existing generated-build CS0162 warning remains visible.
 - Release/version/discovery policy checks passed. Seven additional staging checks cover exact provenance, changed inventory/bytes and a NuGet wrapper whose embedded payload differs from the standalone driver.
 - Split preparation from publication. Promotion requires the exact existing release tag, a successful preparation job for the same repository/commit, unchanged asset checksums and the current release checks. Reuse validated package bytes without rebuilding.
+- Classify twelve SDK-dependent Gateway/signed-LAN cases as processor lifecycle tests. They still execute in the desktop SDK harness and on the processor; Windows net472 skips them with the same explicit runtime requirement as the other lifecycle fixtures.
 - Use TestAdapter 3.0.0 and processor-independent RoomName selection. Processor and read-only live receipts are retained outside source control and must pass before publication.
 
 ## Local connection correction and major release - 2.0.0

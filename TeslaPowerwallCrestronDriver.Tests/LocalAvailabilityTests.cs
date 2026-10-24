@@ -34,9 +34,12 @@ public sealed class LocalAvailabilityTests
   Assert.That(fresh,Is.EqualTo(reused));
   Assert.That(handler.Requests,Is.EqualTo(1),"The actual HTTP transport/cache must not duplicate the required battery read.");
  }
- [Test]
+ [Test, Category("Processor")]
  public async Task FullAuthenticatedGatewayCorePollUsesFourSerializedRequestsAndCachedOperationProjection()
  {
+#if NETFRAMEWORK
+  if (Type.GetType("Mono.Runtime") == null) Assert.Ignore("Requires the SDK desktop harness or processor runtime.");
+#endif
   var options=new PowerwallOptions{Host="192.0.2.1",Password="synthetic",LocalProtocol=PowerwallLocalProtocol.Gateway,CacheExpireSeconds=60,NoLocalSessionPersistence=true};
   var handler=new CoreHandler();var flags=BindingFlags.Instance|BindingFlags.NonPublic;
   var type=typeof(Powerwall).Assembly.GetType("TeslaPowerwallLibrary.Local.PowerwallLocalClient");

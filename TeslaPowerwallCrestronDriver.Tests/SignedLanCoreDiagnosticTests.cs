@@ -16,9 +16,16 @@ using TeslaPowerwall.CrestronDriver;
 using TeslaPowerwallLibrary;
 using TeslaPowerwallLibrary.Tedapi;
 namespace TeslaPowerwallCrestronDriver.Tests;
-[TestFixture, Category("Offline")]
+[TestFixture, Category("Offline"), Category("Processor")]
 public sealed class SignedLanCoreDiagnosticTests
 {
+ [SetUp]
+ public void RequireSupportedRuntime()
+ {
+#if NETFRAMEWORK
+  if (Type.GetType("Mono.Runtime") == null) Assert.Ignore("Requires the SDK desktop harness or processor runtime.");
+#endif
+ }
  private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
  [Test]
  public async Task FullSignedCoreUsesTwoDelayedRequestsWithCachedProjectionsAndNoProbe()
