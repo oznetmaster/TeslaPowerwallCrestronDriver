@@ -18,7 +18,7 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 - Pass driver lifetime cancellation into control requests and reject updates from superseded clients.
 - Preserve configured cloud/history cadence and document that default polling is not a universal processor resource or 15-second physical-loss guarantee.
 
-## 2.0.0 — 2026-10-08
+## [2.0.0](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v2.0.0) — 2026-10-08
 
 - **Reconfiguration required:** update the existing Entity V2 driver in place, then complete its new configuration dialogs. Removing and re-adding the driver is not required. Configuration retention is not guaranteed; have settings and credentials ready to re-enter.
 - Add Gateway and signed Powerwall 3 local access over Ethernet or home-network Wi-Fi using TeslaPowerwallLibrary 2.1.0.
@@ -29,22 +29,22 @@ This changelog records shipped features, fixes, compatibility and runtime depend
 
 The 1.2.0 publication is superseded by 2.0.0 to make the required reconfiguration explicit. The prepared 1.2.1 correction was not published.
 
-## 1.1.8 — 2026-09-22
+## [1.1.8](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v1.1.8) — 2026-09-22
 
 - Update TeslaPowerwallLibrary to 2.0.0, including fixes for partial operation changes, numeric zero reserve and stale settings caches.
 - Route library diagnostics through the owning driver's Crestron logger and filters.
 - Package System.Text.Json and Microsoft logging dependencies instead of Newtonsoft.Json and log4net. Preserve private resource helpers and serialized type metadata while merging assemblies.
 - Existing configuration, commands, properties and UI remain unchanged.
 
-## 1.1.7 — 2026-09-15
+## [1.1.7](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v1.1.7) — 2026-09-15
 
 - Correct the driver tile to appear on the Home screen only, rather than both Home and room screens. Room assignment, configuration and public commands are unchanged.
 
-## 1.1.6 — 2026-09-15
+## [1.1.6](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v1.1.6) — 2026-09-15
 
 - Update TeslaPowerwallLibrary to 1.2.5, correcting Fleet token requests and automatically discovering the account's regional API endpoint. Existing Fleet configuration still requires only Client ID and refresh token.
 
-## 1.1.5 — 2026-09-14
+## [1.1.5](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v1.1.5) — 2026-09-14
 
 [Driver release notes](RELEASE-NOTES.md). Test-only changes do not require a driver release.
 
@@ -52,7 +52,7 @@ The 1.2.0 publication is superseded by 2.0.0 to make the required reconfiguratio
 
 - Fix monthly history row boundaries using the wrong UTC offset across daylight-saving changes.
 
-## 1.1.4 — 2026-09-07
+## [1.1.4](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v1.1.4) — 2026-09-07
 
 ### Fixed
 
