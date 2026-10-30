@@ -19,3 +19,5 @@ Processor ownership uses the processor-resident shared lease protocol across coo
 Published changelog headings use inline version links to the verified GitHub release. Keep Unreleased as plain text, preserve entry dates and text, and leave versions without a corresponding GitHub release as plain headings.
 
 Driver preparation can build and stage immutable assets while processor validation is running. Preparation retains hosted source checks and cannot publish. Promotion still requires the configured processor check or an explicitly recorded manual exception, exact source/tag provenance and the unchanged staged assets.
+
+For a new release, put its exact GitHub release URL in the version heading before committing and freezing the assets, even though publication creates that URL later. Preparation enforces that link so the tagged and packaged changelogs contain it.

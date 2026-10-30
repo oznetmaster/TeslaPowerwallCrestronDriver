@@ -171,6 +171,8 @@ jobs:
         shell: pwsh
         run: |
           if ((Get-Content RELEASE-NOTES.md -TotalCount 1) -cne ('# TeslaPowerwallCrestronDriver ' + '${{ inputs.version }}')) { throw 'Release notes/version mismatch.' }
+          $expectedHeading = '## [' + '${{ inputs.version }}' + '](https://github.com/' + $env:GITHUB_REPOSITORY + '/releases/tag/v' + '${{ inputs.version }}' + ')'
+          if ((Get-Content CHANGELOG.md -Raw) -cnotmatch ('(?m)^' + [regex]::Escape($expectedHeading) + '(?=\s|$)')) { throw 'The changelog version must link to this exact GitHub release before assets are frozen.' }
           Copy-Item RELEASE-NOTES.md "$env:RUNNER_TEMP/release-notes.txt"
           "path=$env:RUNNER_TEMP/release-notes.txt" >> $env:GITHUB_OUTPUT
 
