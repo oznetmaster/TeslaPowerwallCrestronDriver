@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
-## 2.0.7 — 2026-10-30
+## [2.0.7](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v2.0.7) — 2026-10-30
 
 - Prevent false solar and house-load power dips during brief `SolarMeterComms` dropouts in Signed LAN mode, using bounded, validated remote-meter readings from TeslaPowerwallLibrary 2.3.2. Gateway and cloud readings retain their existing behavior.
 - Update TeslaPowerwallLibrary to 2.3.2, including the signed-request expiry correction for slower RSA signing and inherited wired/Wi-Fi meter mapping fixes. Maximum-power ratings and additional PW2 diagnostic readings remain library capabilities; this driver does not expose them.
