@@ -17,3 +17,5 @@ Use an immutable source commit, isolated checkout and run-scoped artifacts. Rech
 Processor ownership uses the processor-resident shared lease protocol across cooperating hosts. Availability observation is advisory; atomic acquisition is decisive. Uncertain cleanup retains the lease. A busy runner or processor must not be reported as a test pass. Central hardware routing still needs qualified capability-based workers, shared version allocation and independent processor admission before removing its current global serialization. VM availability alone does not establish runner/tool qualification.
 
 Published changelog headings use inline version links to the verified GitHub release. Keep Unreleased as plain text, preserve entry dates and text, and leave versions without a corresponding GitHub release as plain headings.
+
+Driver preparation can build and stage immutable assets while processor validation is running. Preparation retains hosted source checks and cannot publish. Promotion still requires the configured processor check or an explicitly recorded manual exception, exact source/tag provenance and the unchanged staged assets.
