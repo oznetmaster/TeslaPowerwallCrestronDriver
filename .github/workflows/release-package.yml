@@ -60,13 +60,15 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Verify configured release checks
         shell: pwsh
         working-directory: ${{ github.workspace }}/.
         env:
           GH_TOKEN: ${{ github.token }}
-          REQUIRED_RELEASE_CHECKS: '[]'
+          REQUIRED_RELEASE_CHECKS: '[{"context":"tests","appId":15368}]'
           REQUIRED_HOSTED_WORKFLOWS: '["tests.yml","workflow-discovery.yml"]'
           RELEASE_SKIP_HARDWARE_CHECKS: ${{ inputs.skip_hardware_checks }}
           RELEASE_HARDWARE_SKIP_REASON: ${{ inputs.hardware_skip_reason }}
@@ -76,7 +78,7 @@ jobs:
         uses: oznetmaster/CrestronHomeNUnit/.github/actions/release-validation@2ae8197c6685099c2133e7bb962d1f3568aae9c3
         with:
           # Preparation only stages immutable files. Hardware remains mandatory at promotion.
-          required-checks: "[]"
+          required-checks: '[{"context":"tests","appId":15368}]'
           hosted-workflows: "[\"tests.yml\",\"workflow-discovery.yml\"]"
           skip-hardware-checks: "${{ inputs.skip_hardware_checks }}"
           hardware-skip-reason: "${{ inputs.hardware_skip_reason }}"
