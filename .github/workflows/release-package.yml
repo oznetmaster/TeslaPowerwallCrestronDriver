@@ -29,6 +29,11 @@ permissions:
   checks: read
   contents: write
 
+concurrency:
+  group: public-release
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   build-and-upload-package:
     if: ${{ !inputs.publish }}
@@ -53,6 +58,13 @@ jobs:
           RELEASE_SKIP_HARDWARE_CHECKS: ${{ inputs.skip_hardware_checks }}
           RELEASE_HARDWARE_SKIP_REASON: ${{ inputs.hardware_skip_reason }}
         run: '& ./.github/scripts/Wait-RequiredReleaseChecks.ps1'
+      - name: Verify shared release policy
+        uses: oznetmaster/CrestronHomeNUnit/.github/actions/release-validation@2ae8197c6685099c2133e7bb962d1f3568aae9c3
+        with:
+          required-checks: "${{ vars.RELEASE_REQUIRED_CHECKS }}"
+          hosted-workflows: "[\"tests.yml\",\"workflow-discovery.yml\"]"
+          skip-hardware-checks: "${{ inputs.skip_hardware_checks }}"
+          hardware-skip-reason: "${{ inputs.hardware_skip_reason }}"
       - name: Check out processor test SDK
         uses: actions/checkout@v4
         with:
@@ -327,6 +339,13 @@ jobs:
           REQUIRED_RELEASE_CHECKS: ${{ vars.RELEASE_REQUIRED_CHECKS }}
           REQUIRED_HOSTED_WORKFLOWS: '["tests.yml","workflow-discovery.yml","nunit5-policy.yml"]'
         run: ./.github/scripts/Wait-RequiredReleaseChecks.ps1
+      - name: Verify shared release policy
+        uses: oznetmaster/CrestronHomeNUnit/.github/actions/release-validation@2ae8197c6685099c2133e7bb962d1f3568aae9c3
+        with:
+          required-checks: "${{ vars.RELEASE_REQUIRED_CHECKS }}"
+          hosted-workflows: "[\"tests.yml\",\"workflow-discovery.yml\",\"nunit5-policy.yml\"]"
+          skip-hardware-checks: "false"
+          hardware-skip-reason: ""
       - name: Publish the staged NuGet distribution
         shell: pwsh
         env:
