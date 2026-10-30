@@ -4,9 +4,10 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
-## 2.0.7 — 2026-10-24
+## 2.0.7 — 2026-10-30
 
-- Update TeslaPowerwallLibrary to 2.3.1, including the signed-request expiry correction for slower RSA signing and inherited wired/Wi-Fi meter mapping fixes. Maximum-power ratings and additional PW2 diagnostic readings remain library capabilities; this driver does not expose them.
+- Prevent false solar and house-load power dips during brief `SolarMeterComms` dropouts in Signed LAN mode, using bounded, validated remote-meter readings from TeslaPowerwallLibrary 2.3.2. Gateway and cloud readings retain their existing behavior.
+- Update TeslaPowerwallLibrary to 2.3.2, including the signed-request expiry correction for slower RSA signing and inherited wired/Wi-Fi meter mapping fixes. Maximum-power ratings and additional PW2 diagnostic readings remain library capabilities; this driver does not expose them.
 - Normalize package ZIP entry paths before staging to prevent processor importer errors about backslash separators.
 - Hide the redundant Refresh Now button for local connections; retain the programmable refresh command.
 

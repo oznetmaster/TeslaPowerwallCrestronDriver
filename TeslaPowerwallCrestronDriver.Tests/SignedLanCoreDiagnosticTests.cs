@@ -27,6 +27,26 @@ public sealed class SignedLanCoreDiagnosticTests
 #endif
  }
  private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
+ [TestCase("trm_mb")]
+ [TestCase("trm_wifi")]
+ public async Task SolarMeterCommsCorrectionReachesDriverDisplayAndTile(string meterType)
+ {
+  using var rig = await Rig.Create();
+  var remote = new LocalRemoteMeterTelemetry { Meters = new[] { new LocalRemoteMeter
+   { Din = "solar-meter", Reading = new LocalRemoteMeterReading
+    { Timestamp = "2026-10-30T11:59:56Z", Channels = new[] { new LocalMeterChannel { RealPowerWatts = 1500 } } } } } };
+  rig.Handler.TelemetryData = """{"system":{"time":"2026-10-30T12:00:00Z"},"control":{"systemStatus":{"nominalFullPackEnergyWh":13500,"nominalEnergyRemainingWh":7000},"islanding":{"contactorClosed":true},"alerts":{"active":["SolarMeterComms"]},"meterAggregates":[{"location":"SITE","realPowerW":-500},{"location":"SOLAR","realPowerW":0},{"location":"BATTERY","realPowerW":0},{"location":"LOAD","realPowerW":-500}]},"teslaRemoteMeter":REMOTE}"""
+   .Replace("REMOTE", System.Text.Json.JsonSerializer.Serialize(remote));
+  rig.Handler.ConfigurationData = """{"default_real_mode":"self_consumption","site_info":{"backup_reserve_percent":20},"meters":[{"type":"TYPE","location":"solar","cts":[true],"real_power_scale_factor":2,"connection":{"device_serial":"solar-meter"}}]}""".Replace("TYPE",meterType);
+  await Complete(rig.Poll(CancellationToken.None));
+  Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
+  Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.True);
+  Assert.That(rig.Driver.SolarPowerDisplay,Is.EqualTo("3.0 kW"));
+  Assert.That(rig.Driver.LoadPowerDisplay,Is.EqualTo("2.5 kW"));
+  Assert.That(rig.Driver.TileDisplay,Does.StartWith("2.5 kW"));
+  Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
+  Assert.That(rig.Handler.Stages,Is.EqualTo(new[]{"telemetry","configuration","telemetry"}));
+ }
  [TestCase(false)]
  [TestCase(true)]
  public async Task FullSignedCoreUsesTwoDelayedRequestsWithCachedProjectionsAndNoProbe(bool realSigning)
@@ -161,7 +181,9 @@ public sealed class SignedLanCoreDiagnosticTests
   // The exact final sequence below verifies that the concurrent call added no requests.
   Assert.That(await Task.WhenAny(poll,Task.Delay(TimeSpan.FromSeconds(30))),Is.SameAs(poll));
   await poll;
-  Assert.That(clock.Elapsed.TotalSeconds,Is.GreaterThanOrEqualTo(16));
+  // Timer resolution may complete the two nominal eight-second delays just under 16 seconds.
+  // The contract is that sequential valid requests may exceed the former 15-second whole-poll limit.
+  Assert.That(clock.Elapsed.TotalSeconds,Is.GreaterThan(15));
   Assert.That(rig.Driver.OnlineIndicatorIsOnline,Is.True);
   Assert.That(rig.Driver.ReadyIndicatorIsReady,Is.True);
   Assert.That(rig.Handler.MaximumActive,Is.EqualTo(1));
@@ -250,6 +272,8 @@ public sealed class SignedLanCoreDiagnosticTests
  private sealed class SignedHandler : HttpMessageHandler
  {
   internal TimeSpan StageDelay=TimeSpan.FromMilliseconds(25);
+  internal string TelemetryData = """{"control":{"systemStatus":{"nominalFullPackEnergyWh":13500,"nominalEnergyRemainingWh":7000},"islanding":{"contactorClosed":true},"meterAggregates":[{"location":"SITE","realPowerW":100},{"location":"SOLAR","realPowerW":200},{"location":"BATTERY","realPowerW":0},{"location":"LOAD","realPowerW":300}]}}""";
+  internal string ConfigurationData = """{"default_real_mode":"self_consumption","site_info":{"backup_reserve_percent":20}}""";
   internal string BlockStage;
   internal TimeSpan? BlockedDuration;
   internal string TimeoutStage;
@@ -282,7 +306,7 @@ public sealed class SignedLanCoreDiagnosticTests
     ByteString reply;
     if(configuration)
     {
-     var file=Message("Signed.FileStoreAPIFile",("Blob",ByteString.CopyFromUtf8("""{"default_real_mode":"self_consumption","site_info":{"backup_reserve_percent":20}}""")));
+     var file=Message("Signed.FileStoreAPIFile",("Blob",ByteString.CopyFromUtf8(ConfigurationData)));
      var read=Message("Signed.FileStoreAPIReadFileResponse",("File",file));
      var store=Message("Signed.FileStoreMessages",("ReadFileResponse",read));
      reply=Message("Signed.MessageEnvelope",("Filestore",store)).ToByteString();
@@ -291,7 +315,7 @@ public sealed class SignedLanCoreDiagnosticTests
     {
      var query=Parse("Graphql.Envelope",envelope.ToByteArray());
      Assert.That(Value<ByteString>(Value<IMessage>(Value<IMessage>(query,"Graphql"),"QueryRequest"),"Query").ToStringUtf8(),Does.Contain("DeviceControllerQuery"));
-     reply=Message("Graphql.Envelope",("Graphql",Message("Graphql.GraphQLMessages",("QueryResponse",Message("Graphql.QueryResponse",("Status",1),("Data","""{"control":{"systemStatus":{"nominalFullPackEnergyWh":13500,"nominalEnergyRemainingWh":7000},"islanding":{"contactorClosed":true},"meterAggregates":[{"location":"SITE","realPowerW":100},{"location":"SOLAR","realPowerW":200},{"location":"BATTERY","realPowerW":0},{"location":"LOAD","realPowerW":300}]}}""")))))).ToByteString();
+     reply=Message("Graphql.Envelope",("Graphql",Message("Graphql.GraphQLMessages",("QueryResponse",Message("Graphql.QueryResponse",("Status",1),("Data",TelemetryData)))))).ToByteString();
     }
     return new HttpResponseMessage(HttpStatusCode.OK){Content=new ByteArrayContent(Message("Signed.RoutableMessage",("ProtobufMessageAsBytes",reply)).ToByteArray())};
    }finally{Interlocked.Decrement(ref active);}

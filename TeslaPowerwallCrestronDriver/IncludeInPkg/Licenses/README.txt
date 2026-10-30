@@ -1,1 +1,1 @@
-TeslaPowerwallCrestronDriver incorporates TeslaPowerwallLibrary 2.3.1 and its resolved runtime dependencies. The retained licenses and third-party notices apply independently of the driver license. Crestron SDK assemblies remain platform-provided dependencies.
+TeslaPowerwallCrestronDriver incorporates TeslaPowerwallLibrary 2.3.2 and its resolved runtime dependencies. The retained licenses and third-party notices apply independently of the driver license. Crestron SDK assemblies remain platform-provided dependencies.

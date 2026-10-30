@@ -1,8 +1,10 @@
 # TeslaPowerwallCrestronDriver 2.0.7
 
-This patch updates TeslaPowerwallLibrary to 2.3.1 and includes the local polling reliability fixes developed since 2.0.0.
+This patch updates TeslaPowerwallLibrary to 2.3.2 and includes the local polling reliability fixes developed since 2.0.0.
 
 ## Changes
+
+- Prevent false solar and house-load power dips during brief `SolarMeterComms` dropouts in Signed LAN mode. The library uses complete configured wired/Wi-Fi remote-meter samples within 60 seconds of the gateway clock; stale or incomplete samples do not replace controller readings. Gateway, Owner and Fleet connections retain their existing behavior.
 
 - Normalize package ZIP entry paths before staging to prevent processor importer errors about backslash separators.
 - Publish Offline feedback after a failed required API observation and recover only after a fresh successful observation and data poll.

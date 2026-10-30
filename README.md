@@ -32,7 +32,7 @@ Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent
 
 This driver is a **Crestron Home energy-automation Entity V2 driver** implemented on the **Crestron Home SDK Entity V2 Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
 
-The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using TeslaPowerwallLibrary 2.3.1. Cloud connections obtain and renew access tokens from their configured refresh token. Local connections use their own endpoint and credentials; they do not require a running Windows application.
+The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using TeslaPowerwallLibrary 2.3.2. Cloud connections obtain and renew access tokens from their configured refresh token. Local connections use their own endpoint and credentials; they do not require a running Windows application.
 
 ---
 
@@ -53,6 +53,8 @@ Uses Tesla's officially supported, documented Fleet API. Requires a Tesla Fleet 
 The Fleet API covers everything this driver uses — live status, energy/impact history, backup reserve, operating mode, and grid export control — with one exception: **Storm Watch is not available through the Fleet API**. When a Client ID is configured, the Storm Watch toggle is hidden from the Settings page and the `setStormWatchEnabled` command is a no-op.
 
 ### Local access
+
+Signed LAN readings use the library's bounded `SolarMeterComms` correction to prevent false solar and house-load dips during brief remote-meter communication dropouts. It requires complete configured remote-meter samples within 60 seconds of the gateway clock and preserves genuine zero production outside that alert.
 
 The driver connects over your home network using Ethernet or normal Powerwall Wi-Fi. These are two network interfaces to the same local API, not different connection modes.
 
