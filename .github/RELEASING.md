@@ -2,6 +2,8 @@
 
 Independent tasks may initiate releases at the same time. All publication workflows in this repository share `public-release` with `cancel-in-progress: false` and `queue: max`. GitHub retains up to 100 queued requests per group; overflow/cancellation is not a successful release. Different repositories publish independently. Do not invoke another workflow requiring the same publication lock while holding it.
 
+Product NuGet publication uses Trusted Publishing through the official `NuGet/login` action pinned to its full commit. Only the promotion job has `id-token: write`; it requests a temporary credential immediately before pushing the verified staged package. The product workflow does not use or fall back to the long-lived `NUGET_API_KEY` secret. The NuGet policy is owned and created by profile `oznetmaster`, named `TeslaPowerwallCrestronDriver`, and restricted to `oznetmaster/TeslaPowerwallCrestronDriver`, workflow file `release-package.yml`, no environment, scope **Push only new package versions**, exact package pattern `CrestronHomeDriver.Tesla.Powerwall`. Repository, workflow filename, environment or policy-creator changes require reviewing both sides together. The separate test-package publication workflow retains its existing authentication configuration.
+
 On manual release workflows, desktop and processor evidence can be reused independently. Both options default to false:
 
 - `skip_desktop_checks` requires `desktop_skip_reason`, identifying the tested source, completion time, frameworks, pass counts and report location.

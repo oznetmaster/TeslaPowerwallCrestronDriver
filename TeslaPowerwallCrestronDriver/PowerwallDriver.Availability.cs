@@ -1,7 +1,6 @@
 // Copyright (c) 2026 Neil Colvin.
 // Licensed under the MIT License with Commons Clause. See LICENSE in the repository root.
 using System;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using TeslaPowerwallLibrary;
@@ -44,22 +43,10 @@ public sealed partial class TeslaPowerwallDriver
  // subsequent power/grid projections; keep one owned HTTP client and no TCP loop.
  internal static async Task<double> ReadFreshLocalLevelAsync(Powerwall client, CancellationToken token)
  {
-  string payload = await client.PollAsync("/api/system_status/soe", force: true, cancellationToken: token).ConfigureAwait(false);
+  double? level = await client.GetBatteryLevelAsync(scale: true, force: true, cancellationToken: token).ConfigureAwait(false);
   token.ThrowIfCancellationRequested();
-  try
-  {
-   using var document = JsonDocument.Parse(payload ?? "null");
-   if(document.RootElement.ValueKind != JsonValueKind.Object ||
-      !document.RootElement.TryGetProperty("percentage", out var percentage) ||
-      percentage.ValueKind != JsonValueKind.Number || !percentage.TryGetDouble(out var value) ||
-      double.IsNaN(value) || double.IsInfinity(value))
-    throw new PowerwallException("The local Powerwall did not provide a fresh battery reading.");
-   // Match Powerwall.LevelAsync(scale:true) exactly, including real zero values.
-   return (value / 0.95) - (5 / 0.95);
-  }
-  catch(JsonException ex)
-  {
-   throw new PowerwallException("The local Powerwall returned an invalid battery reading: " + ex.Message);
-  }
+  if (!level.HasValue)
+   throw new PowerwallException("The local Powerwall did not provide a fresh battery reading.");
+  return level.Value;
  }
 }

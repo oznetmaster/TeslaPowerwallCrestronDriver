@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## [2.0.8](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v2.0.8) — 2026-11-02
+
+- Prevent negative battery percentages at or below the raw 5% reserve. Use TeslaPowerwallLibrary 2.5.0's validated fresh battery-level API for local availability, removing direct response parsing and duplicated scaling from the driver. Cloud readings inherit the same 0% floor through the library.
+- Update the driver and companion local provisioning tool to TeslaPowerwallLibrary 2.5.0. The library's additional PW2 instantaneous power limits are not exposed by the driver. Existing UI, configuration and controls remain unchanged.
+
 ## [2.0.7](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v2.0.7) — 2026-10-30
 
 - Prevent false solar and house-load power dips during brief `SolarMeterComms` dropouts in Signed LAN mode, using bounded, validated remote-meter readings from TeslaPowerwallLibrary 2.3.2. Gateway and cloud readings retain their existing behavior.

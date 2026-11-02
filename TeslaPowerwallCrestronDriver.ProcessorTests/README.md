@@ -1,6 +1,6 @@
 # TeslaPowerwallCrestronDriver processor tests
 
-## Test package 2.0.7
+## Test package 2.0.8
 
 The release includes the standalone test `.pkg`, documentation, source revisions and checksums. It uses NUnit 5.0.0 and the public CrestronHomeNUnit SDK 2.3.0. Unit and lifecycle suites run without cloud or Powerwall access. Manual live suites require private inputs and are read-only.
 
@@ -20,8 +20,8 @@ The package appears at `bin/Debug/net472/TeslaPowerwallCrestronDriver.ProcessorT
 
 ## Suites
 
-- **Unit Tests**: 92 offline driver cases. Run on Windows through the NUnit Visual Studio adapter or on the processor. No account credentials or physical devices are needed.
-- **Processor Lifecycle**: 88 SDK lifecycle checks. Changing authentication mode or Fleet application requires a fresh token; rejected edits preserve active configuration; refresh interval boundaries are validated; clearing configuration removes active and pending credentials and resets availability. Run these separately on the processor; the shared desktop harness provides additional validation.
+- **Unit Tests**: 97 offline driver cases. Run on Windows through the NUnit Visual Studio adapter or on the processor. No account credentials or physical devices are needed.
+- **Processor Lifecycle**: 97 SDK lifecycle checks. Changing authentication mode or Fleet application requires a fresh token; rejected edits preserve active configuration; refresh interval boundaries are validated; clearing configuration removes active and pending credentials and resets availability. Run these separately on the processor; the shared desktop harness provides additional validation.
 
 Use the Windows runner's **Find packages**, select this package, connect, then select a suite and **Run all**. Discovery uses a dynamically assigned port. The standalone tile exposes the same suites and results. Nothing runs automatically on deployment. Original driver assets are under `DriverTestData`; the test tile's assets retain their own root paths.
 
@@ -39,7 +39,7 @@ The package contains 87 offline cases and 29 lifecycle cases. Lifecycle tests ex
 
 Hosted and release validation compare the exact discovered test identities with execution results and the merged package, rather than maintaining a duplicate expected test count. Live tests are discovered but not operated in hosted CI. Only documented processor-runtime skips are accepted by the Windows net472 check; the desktop SDK harness must execute every automatic test successfully.
 
-The 2.0.7 driver uses TeslaPowerwallLibrary 2.3.2. Offline cases cover cloud compatibility, local configuration, capability-dependent UI and read-only controls, portable inputs, refresh lifetime, and per-driver logging. Desktop test-runner dependencies and their Newtonsoft.Json dependency are excluded from the processor merge.
+The 2.0.8 driver uses TeslaPowerwallLibrary 2.5.0. Battery boundary tests cover the typed fresh-read API, shared reserve-floor scaling and retained request counts. Offline cases cover cloud compatibility, local configuration, capability-dependent UI and read-only controls, portable inputs, refresh lifetime, and per-driver logging. Desktop test-runner dependencies and their Newtonsoft.Json dependency are excluded from the processor merge.
 
 ## Read-only live API matrix
 

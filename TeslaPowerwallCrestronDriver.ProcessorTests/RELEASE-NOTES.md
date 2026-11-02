@@ -1,3 +1,8 @@
+# Test package 2.0.8
+
+- Validate driver 2.0.8 with TeslaPowerwallLibrary 2.5.0's typed, forced battery observation. Verify reserve boundaries, numeric zero, cached-response reuse, one required fresh read and continued rejection of invalid measurements.
+- Preserve the local polling, cloud compatibility, lifecycle and explicitly selected read-only live suites. Test discovery supplies the current suite inventory; desktop unit success does not establish processor lifecycle compatibility.
+
 # Test package 2.0.7
 
 - Validate the 2.0.7 driver against TeslaPowerwallLibrary 2.3.2 with 92 unit and 90 processor lifecycle cases.

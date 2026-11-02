@@ -347,13 +347,32 @@ public sealed class RefreshLifecycleTests
 		}
 
  [TestCase("{\"percentage\":75}", 73.6842105263158)]
- [TestCase("{\"percentage\":0}", -5.26315789473684)]
+ [TestCase("{\"percentage\":0}", 0)]
+ [TestCase("{\"percentage\":4.99}", 0)]
+ [TestCase("{\"percentage\":5}", 0)]
+ [TestCase("{\"percentage\":5.01}", 0.0105263157894737)]
+ [TestCase("{\"percentage\":100}", 100)]
  public async Task ForcedFirstDataReadIsIssuedOnceAndUsesLibraryScale(string json,double expected)
  {
   _transport.SoePayload=json;_transport.Release.TrySetResult(true);
   double actual=await TeslaPowerwallDriver.ReadFreshLocalLevelAsync(_client,CancellationToken.None);
   Assert.That(actual,Is.EqualTo(expected).Within(0.000001));
   Assert.That(_transport.Reads,Is.EqualTo(1));Assert.That(_transport.ForceReads,Is.EqualTo(1));
+ }
+ [TestCase("{\"percentage\":0}")]
+ [TestCase("{\"percentage\":4.99}")]
+ [TestCase("{\"percentage\":5}")]
+ public async Task FreshReserveBoundaryPublishesZeroPercentAndRestoresOnline(string payload)
+ {
+  using var cts=ConfigureLocal();
+  _transport.SoePayload=payload;_transport.CompletePoll=true;_transport.Release.TrySetResult(true);
+  Call("SetOfflineState","Synthetic previous observation failure");
+  await TestSupport.Complete((Task)Call("PollAsync",_client,cts.Token));
+  Assert.That(_driver.BatteryLevelDisplay,Does.StartWith("0%"));
+  Assert.That(_driver.OnlineIndicatorIsOnline,Is.True);
+  Assert.That(_driver.ReadyIndicatorIsReady,Is.True);
+  Assert.That(_transport.SoeReads,Is.EqualTo(1));
+  Assert.That(_transport.ForceReads,Is.EqualTo(1));
  }
  [TestCase(null)] [TestCase("null")] [TestCase("{}")] [TestCase("{\"percentage\":\"invalid\"}")] [TestCase("not JSON")]
  public async Task InvalidFreshBatteryReadingCannotRestoreCachedTile(string payload)

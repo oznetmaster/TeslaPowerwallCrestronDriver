@@ -32,13 +32,13 @@ Tesla and Powerwall are trademarks of Tesla, Inc. This project is an independent
 
 This driver is a **Crestron Home energy-automation Entity V2 driver** implemented on the **Crestron Home SDK Entity V2 Model**. It derives directly from `ReflectedAttributeDriverEntity` and exposes all configuration items, properties, commands, and extension UI bindings through SDK attributes and the entity model.
 
-The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using TeslaPowerwallLibrary 2.3.2. Cloud connections obtain and renew access tokens from their configured refresh token. Local connections use their own endpoint and credentials; they do not require a running Windows application.
+The driver connects to a single Tesla Powerwall energy site through the [TeslaPowerwallLibrary](https://github.com/oznetmaster/TeslaPowerwallLibrary) NuGet package, using TeslaPowerwallLibrary 2.5.0. Battery percentages use the Tesla app scale and stop at 0% when the raw level is at or below the 5% reserve, across local and cloud connections. Cloud connections obtain and renew access tokens from their configured refresh token. Local connections use their own endpoint and credentials; they do not require a running Windows application.
 
 ---
 
 ## Supported Connection Modes
 
-Select **Connection** in Configure. For Owner or Fleet, choose **Cloud**: leave **Tesla Fleet API Client ID** blank for Owner, or set it for Fleet. Local choices are described below. Upgrading from a previous version requires completing the configuration again; see [Upgrading to 2.0.0](#upgrading-to-200).
+Select **Connection** in Configure. For Owner or Fleet, choose **Cloud**: leave **Tesla Fleet API Client ID** blank for Owner, or set it for Fleet. Local choices are described below. Upgrading from a release before 2.0.0 requires completing the configuration again; see [Upgrading to 2.0.0](#upgrading-to-200). Updating from 2.0.7 to 2.0.8 retains the existing configuration.
 
 ### Tesla Owner API (Cloud)
 

@@ -16,12 +16,17 @@ namespace TeslaPowerwallCrestronDriver.Tests;
 [TestFixture, Category("Offline")]
 public sealed class LocalAvailabilityTests
 {
- [Test]
- public async Task ExistingGatewayTransportReusesRequiredFreshBatteryResponseWithoutAnotherRequest()
+ [TestCase(0, 0)]
+ [TestCase(4.99, 0)]
+ [TestCase(5, 0)]
+ [TestCase(5.01, 0.0105263157894737)]
+ [TestCase(75, 73.6842105263158)]
+ [TestCase(100, 100)]
+ public async Task ExistingGatewayTransportReusesRequiredFreshBatteryResponseWithoutAnotherRequest(double percentage, double expected)
  {
   var options=new PowerwallOptions {Host="192.0.2.1",Password="synthetic",LocalProtocol=PowerwallLocalProtocol.Gateway,
    CacheExpireSeconds=60,NoLocalSessionPersistence=true};
-  var handler=new BatteryHandler();
+  var handler=new BatteryHandler(percentage);
   var type=typeof(Powerwall).Assembly.GetType("TeslaPowerwallLibrary.Local.PowerwallLocalClient");
   using var transport=(PowerwallLocalClient)Activator.CreateInstance(type,BindingFlags.Instance|BindingFlags.NonPublic,null,new object[]{options,handler},null);
   var flags=BindingFlags.Instance|BindingFlags.NonPublic;
@@ -31,6 +36,7 @@ public sealed class LocalAvailabilityTests
   typeof(Powerwall).GetField("_client",flags).SetValue(client,transport);
   double fresh=await TeslaPowerwallDriver.ReadFreshLocalLevelAsync(client,CancellationToken.None);
   double? reused=await client.LevelAsync(scale:true);
+  Assert.That(fresh,Is.EqualTo(expected).Within(0.000001));
   Assert.That(fresh,Is.EqualTo(reused));
   Assert.That(handler.Requests,Is.EqualTo(1),"The actual HTTP transport/cache must not duplicate the required battery read.");
  }
@@ -90,6 +96,8 @@ public sealed class LocalAvailabilityTests
  }
  private sealed class BatteryHandler:HttpMessageHandler
  {
+  private readonly double _percentage;
+  internal BatteryHandler(double percentage) => _percentage=percentage;
   internal int Requests;
   protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken token)
   {
@@ -97,7 +105,7 @@ public sealed class LocalAvailabilityTests
    Assert.That(request.RequestUri.Host,Is.EqualTo("192.0.2.1"));
    Assert.That(request.RequestUri.AbsolutePath,Is.EqualTo("/api/system_status/soe"));
    Requests++;
-   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK){Content=new StringContent("{\"percentage\":75}")});
+   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK){Content=new StringContent("{\"percentage\":"+_percentage.ToString(System.Globalization.CultureInfo.InvariantCulture)+"}")});
   }
  }
 }
