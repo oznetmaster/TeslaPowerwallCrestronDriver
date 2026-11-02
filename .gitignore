@@ -48,3 +48,7 @@ Desktop.ini
 ## Local diagnostic/scratch files (should never be committed)
 _diag*
 _schema.xsd
+
+# Shared Cake build downloads and invocation receipts
+/artifacts/build-components/
+/artifacts/build-automation/
