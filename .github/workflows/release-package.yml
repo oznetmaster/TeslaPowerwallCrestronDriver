@@ -315,6 +315,10 @@ jobs:
           $files = @(Get-ChildItem $destination -File | ForEach-Object { @{ Name=$_.Name; Sha256=(Get-FileHash $_.FullName).Hash } })
           @{ Repository=$env:GITHUB_REPOSITORY; Commit=$env:GITHUB_SHA; Version='${{ inputs.version }}'; BuildRunId=$env:GITHUB_RUN_ID; Files=$files } | ConvertTo-Json -Depth 5 | Set-Content "$destination/StagedRelease.json"
           ./tools/Assert-StagedRelease.ps1 -Directory $destination -Version '${{ inputs.version }}' -Commit $env:GITHUB_SHA -BuildRunId $env:GITHUB_RUN_ID
+      - name: Verify public driver artifact contents
+        shell: pwsh
+        run: |
+          ./tools/Assert-PublicDriverArtifacts.ps1 -Path @("artifacts/release")
       - uses: actions/upload-artifact@v4
         with:
           name: release-assets
@@ -382,6 +386,10 @@ jobs:
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
         with:
           user: oznetmaster
+      - name: Verify public driver artifact contents
+        shell: pwsh
+        run: |
+          ./tools/Assert-PublicDriverArtifacts.ps1 -Path @("artifacts/release")
       - name: Publish the staged NuGet distribution
         shell: pwsh
         env:
