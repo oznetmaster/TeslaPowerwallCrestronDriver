@@ -20,6 +20,7 @@ using Crestron.DeviceDrivers.SDK.EntityModel.Data;
 using Crestron.SimplSharp;
 
 using TeslaPowerwall;
+
 using TeslaPowerwallLibrary;
 using TeslaPowerwallLibrary.Cloud;
 using TeslaPowerwallLibrary.Models;
@@ -126,9 +127,9 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 		{
 		_logger = creationArgs.Logger;
 		_logControllerId = creationArgs.DriverId;
-        _libraryLogger = new LibraryLogger (
-            level => _logger?.IsEnabled (_logControllerId, level) == true,
-            (level, message) => _logger?.Log (_logControllerId, level, message));
+		_libraryLogger = new LibraryLogger (
+			 level => _logger?.IsEnabled (_logControllerId, level) == true,
+			 (level, message) => _logger?.Log (_logControllerId, level, message));
 
 		var configurationArgs = DataDrivenConfigurationControllerArgs.FromResources (creationArgs, resources, ControllerId);
 		ConfigurationController = new DelegateDataDrivenConfigurationController (configurationArgs, ApplyConfigurationItems, null, null);
@@ -205,6 +206,12 @@ public sealed partial class TeslaPowerwallDriver : ReflectedAttributeDriverEntit
 	/// <inheritdoc/>
 	public override void Dispose ()
 		{
+		lock (_stateLock)
+			{
+			if (_disposed)
+				return;
+			_disposed = true;
+			}
 		StopRefreshLoop ();
 		base.Dispose ();
 		}

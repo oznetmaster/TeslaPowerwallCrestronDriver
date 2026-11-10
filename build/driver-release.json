@@ -1,0 +1,15 @@
+{
+  "name": "TeslaPowerwallCrestronDriver",
+  "version": "2.0.9",
+  "packages": [
+    {
+      "id": "CrestronHomeDriver.Tesla.Powerwall",
+      "project": "TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.csproj",
+      "manifest": "TeslaPowerwallCrestronDriver/TeslaPowerwallCrestronDriver.json",
+      "payload": "TeslaPowerwallCrestronDriver.pkg",
+      "displayName": "TeslaPowerwallCrestronDriver",
+      "vendor": "Tesla",
+      "category": "Energy Automation"
+    }
+  ]
+}

@@ -4,7 +4,9 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+
 using TeslaPowerwall.CrestronDriver.LocalSetup;
+
 using TeslaPowerwallLibrary;
 using TeslaPowerwallLibrary.Tedapi;
 
@@ -40,7 +42,8 @@ try
 			}
 		var seed = JsonSerializer.Deserialize<ProvisioningProfile> (File.ReadAllText (args[2]), ProvisioningProfile.JsonOptions) ?? throw new InvalidDataException ();
 		seed.Validate (requireRefreshCredential: args[0] == "init");
-		if (args[0] == "init-local") seed.RefreshToken = "";
+		if (args[0] == "init-local")
+			seed.RefreshToken = "";
 		using RSA generated = RSA.Create (4096);
 		seed.SigningKey = generated.ToXmlString (true);
 		seed.State = LocalKeyState.Unknown;
@@ -61,8 +64,13 @@ try
 		string output = Path.Combine (directory, "LiveTestSettings.json");
 		File.WriteAllText (output, JsonSerializer.Serialize (new
 			{
-			enabled = false, mode = "local", localProtocol = "Signed LAN", host = profile.Host,
-			password = profile.Password, localSigningKey = profile.SigningKey, localRefreshIntervalSeconds = 15
+			enabled = false,
+			mode = "local",
+			localProtocol = "Signed LAN",
+			host = profile.Host,
+			password = profile.Password,
+			localSigningKey = profile.SigningKey,
+			localRefreshIntervalSeconds = 15
 			}, ProvisioningProfile.JsonOptions));
 		Console.WriteLine ("Private Windows/processor test inputs: " + output);
 		return 0;
@@ -81,20 +89,25 @@ try
 		}
 	if (enroll && (profile.EnrollmentPending || profile.State == LocalKeyState.Verified))
 		{
-			throw new InvalidOperationException ("Check the existing key status before repeating an uncertain enrollment; verified keys need no enrollment.");
-			}
+		throw new InvalidOperationException ("Check the existing key status before repeating an uncertain enrollment; verified keys need no enrollment.");
+		}
 	using RSA key = profile.OpenKey ();
 	bool fleet = profile.Mode == "fleet";
 	PowerwallOptions options = preparedSession
 		? (JsonSerializer.Deserialize<PreparedCloudSession> (File.ReadAllText (args[2])) ?? throw new InvalidDataException ()).Options (profile.SiteId)
 		: new PowerwallOptions
-		{
-		CloudMode = !fleet, FleetApi = fleet, SiteId = profile.SiteId,
-		RefreshToken = fleet ? null : profile.RefreshToken,
-		FleetApiRefreshToken = fleet ? profile.RefreshToken : null, FleetApiClientId = profile.ClientId,
-		FleetApiRegion = "auto", NoCloudTokenPersistence = true, NoFleetApiTokenPersistence = true,
-		Timeout = TimeSpan.FromSeconds (25)
-		};
+			{
+			CloudMode = !fleet,
+			FleetApi = fleet,
+			SiteId = profile.SiteId,
+			RefreshToken = fleet ? null : profile.RefreshToken,
+			FleetApiRefreshToken = fleet ? profile.RefreshToken : null,
+			FleetApiClientId = profile.ClientId,
+			FleetApiRegion = "auto",
+			NoCloudTokenPersistence = true,
+			NoFleetApiTokenPersistence = true,
+			Timeout = TimeSpan.FromSeconds (25)
+			};
 	using var client = new Powerwall (options);
 	void SaveToken (string? token)
 		{

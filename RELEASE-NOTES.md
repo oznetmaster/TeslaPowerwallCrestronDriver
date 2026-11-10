@@ -1,16 +1,17 @@
-# TeslaPowerwallCrestronDriver 2.0.8
+# TeslaPowerwallCrestronDriver 2.0.9
 
-This patch prevents negative battery percentages at or below the raw 5% reserve and uses TeslaPowerwallLibrary 2.5.0 for battery validation and scaling.
+This patch corrects the dependency and lifecycle issues described below.
 
-## Changes
+- Use TeslaPowerwallLibrary 2.5.1 in the driver and local provisioning tool.
+- Close connection admission and drain refresh/command work before retiring clients and their owned RSA signing key.
+- Reject retired token callbacks and post-shutdown client recreation; preserve existing connection settings and stored credentials.
 
-- Consume the library's typed `GetBatteryLevelAsync(scale: true, force: true)` result for local availability. Remove direct battery-response JSON parsing and duplicated scaling from the driver.
-- Retain one required fresh battery observation, shared transport caches, cancellation and offline recovery behavior. Missing or invalid fresh readings cannot restore Online feedback; numeric zero remains a genuine reading and displays 0%.
-- Inherit the shared 0% reserve floor for cloud readings through the compatible legacy library API.
-- Update the companion Windows local provisioning tool to the same library version. The library's PW2 instantaneous power limits remain unexposed by this driver; no battery dispatch controls are added.
+## Installation
 
-## Installation and upgrade
+Use the driver package from [GitHub](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v2.0.9) or the matching NuGet distribution. Import the package, then update the existing driver in Home Setup or Configure Pro. Importing alone does not update the running instance. Existing pairing and configuration formats are retained; removal and re-add is not a routine update step.
 
-Use the [Crestron Home Driver Feed Installer](https://github.com/oznetmaster/Crestron-Home-Driver-Feed-Installer), or download `TeslaPowerwallCrestronDriver.pkg` from this release and update the existing instance through Crestron Home Setup. Confirm version **2.0.008.0000**. UI, commands and configuration remain unchanged from 2.0.7; no remove/re-add or configuration migration is required. Installations older than 2.0.0 must follow the major-version reconfiguration instructions in the README.
+## Validation
 
-The NuGet package `CrestronHomeDriver.Tesla.Powerwall` wraps the identical final `.pkg`; it is not a DLL-reference package or an official Crestron publishing specification. GitHub's automatic source archives are not installable driver packages. Crestron's catalog version may differ from this public GitHub/NuGet release.
+Passed 303 workstation Debug and 303 Release test executions, plus 195 native net472/Mono processor tests. Processor validation used fake transports and synthetic credentials; no new physical-device acceptance or endurance run is claimed. Existing processor configuration and all pairing files were preserved. See [development history](DEVELOPMENT-HISTORY.md) for provenance and limits.
+
+This GitHub/NuGet release does not replace any submitted Crestron package. Submission-specific PDFs and correspondence are excluded from public artifacts.

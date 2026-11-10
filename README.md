@@ -1,5 +1,9 @@
 # TeslaPowerwallCrestronDriver
 
+## Current GitHub/NuGet release: 2.0.9
+
+[Download 2.0.9](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v2.0.9) or use the matching NuGet driver distribution. This patch includes the audited dependency and lifecycle corrections; see [release notes](RELEASE-NOTES.md). Existing configuration and pairing formats are retained. Crestron catalog/submission versions below retain their separate attribution.
+
 ## Crestron availability
 
 This driver is available through Crestron. Find it on the [Crestron driver site](https://drivers.crestron.io/) or in **Crestron Home Configure Pro**, using the following catalog entry:

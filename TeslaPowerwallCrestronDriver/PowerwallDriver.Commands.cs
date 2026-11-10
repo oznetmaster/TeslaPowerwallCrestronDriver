@@ -20,6 +20,7 @@ using Crestron.DeviceDrivers.SDK.EntityModel.Data;
 using Crestron.SimplSharp;
 
 using TeslaPowerwall;
+
 using TeslaPowerwallLibrary;
 using TeslaPowerwallLibrary.Cloud;
 using TeslaPowerwallLibrary.Models;
@@ -76,8 +77,8 @@ public sealed partial class TeslaPowerwallDriver
 			(client, token) => client.SetModeAsync (value, cancellationToken: token),
 			() =>
 				{
-				OperationMode = value;
-				OperationModeDisplay = BuildOperationModeDisplay (value);
+					OperationMode = value;
+					OperationModeDisplay = BuildOperationModeDisplay (value);
 				},
 			"set mode to " + value));
 		}
@@ -100,8 +101,8 @@ public sealed partial class TeslaPowerwallDriver
 			(client, token) => client.SetGridExportAsync (value, cancellationToken: token),
 			() =>
 				{
-				GridExportMode = value;
-				GridExportModeDisplay = "Export: " + FormatGridExportDisplay (value);
+					GridExportMode = value;
+					GridExportModeDisplay = "Export: " + FormatGridExportDisplay (value);
 				},
 			"set grid export to " + value));
 		}

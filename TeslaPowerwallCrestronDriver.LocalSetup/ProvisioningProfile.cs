@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
 using TeslaPowerwallLibrary;
 using TeslaPowerwallLibrary.Tedapi;
 
@@ -32,14 +33,23 @@ internal sealed class ProvisioningProfile
 	/// <summary>Gets or sets the private RSA-4096 key, never written to standard output.</summary>
 	public string SigningKey { get; set; } = "";
 	/// <summary>Gets or sets the last confirmed authorization state for this exact key.</summary>
-	public LocalKeyState State { get; set; }
+	public LocalKeyState State
+		{
+		get; set;
+		}
 	/// <summary>Gets or sets the public-key fingerprint returned by Tesla.</summary>
 	public string Fingerprint { get; set; } = "";
 	/// <summary>Gets or sets whether an interrupted authentication requires investigation.</summary>
-	public bool AuthenticationPending { get; set; }
+	public bool AuthenticationPending
+		{
+		get; set;
+		}
 
 	/// <summary>Gets or sets whether a registration outcome must be checked before another enrollment.</summary>
-	public bool EnrollmentPending { get; set; }
+	public bool EnrollmentPending
+		{
+		get; set;
+		}
 
 	/// <summary>Gets the serializer configuration for private profile and transfer files.</summary>
 	internal static JsonSerializerOptions JsonOptions { get; } = new () { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, PropertyNameCaseInsensitive = true, WriteIndented = true };
@@ -131,10 +141,17 @@ internal sealed class ProvisioningProfile
 		using RSA key = OpenKey ();
 		return new ()
 			{
-			["ConnectionMode"] = "Signed LAN", ["LocalHost"] = Host, ["LocalPassword"] = Password,
-			["LocalSigningKey"] = SigningKey, ["AllowLocalControl"] = "false", ["LocalRefreshIntervalSeconds"] = 15,
-			["ClientId"] = "", ["RefreshToken"] = "", ["SiteId"] = "",
-			["UseCloudHistory"] = "false", ["RefreshIntervalSeconds"] = 60
+			["ConnectionMode"] = "Signed LAN",
+			["LocalHost"] = Host,
+			["LocalPassword"] = Password,
+			["LocalSigningKey"] = SigningKey,
+			["AllowLocalControl"] = "false",
+			["LocalRefreshIntervalSeconds"] = 15,
+			["ClientId"] = "",
+			["RefreshToken"] = "",
+			["SiteId"] = "",
+			["UseCloudHistory"] = "false",
+			["RefreshIntervalSeconds"] = 60
 			};
 		}
 	}
@@ -165,10 +182,16 @@ internal sealed class PreparedCloudSession
 		bool fleet = Mode == "fleet";
 		return new PowerwallOptions
 			{
-			CloudMode = !fleet, FleetApi = fleet, SiteId = SiteId,
-			AccessToken = fleet ? null : AccessToken, FleetApiAccessToken = fleet ? AccessToken : null,
-			FleetApiClientId = fleet ? ClientId : null, FleetApiRegion = Region,
-			NoCloudTokenPersistence = true, NoFleetApiTokenPersistence = true, Timeout = TimeSpan.FromSeconds (25)
+			CloudMode = !fleet,
+			FleetApi = fleet,
+			SiteId = SiteId,
+			AccessToken = fleet ? null : AccessToken,
+			FleetApiAccessToken = fleet ? AccessToken : null,
+			FleetApiClientId = fleet ? ClientId : null,
+			FleetApiRegion = Region,
+			NoCloudTokenPersistence = true,
+			NoFleetApiTokenPersistence = true,
+			Timeout = TimeSpan.FromSeconds (25)
 			};
 		}
 	}

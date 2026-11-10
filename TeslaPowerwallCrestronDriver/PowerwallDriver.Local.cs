@@ -4,7 +4,9 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Crestron.DeviceDrivers.SDK.EntityModel.Attributes;
+
 using TeslaPowerwallLibrary;
 
 namespace TeslaPowerwall.CrestronDriver;

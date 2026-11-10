@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
+
 using Crestron.DeviceDrivers.EntityModel.Data;
+
 using TeslaPowerwallLibrary;
 
 namespace TeslaPowerwall.CrestronDriver;
@@ -22,9 +24,15 @@ internal sealed class LocalConnectionSettings
 	/// <summary>Gets the private key from the masked persistent configuration.</summary>
 	internal string SigningKey { get; private set; } = string.Empty;
 	/// <summary>Gets whether the installer explicitly permitted local setting changes.</summary>
-	internal bool AllowControl { get; private set; }
+	internal bool AllowControl
+		{
+		get; private set;
+		}
 	/// <summary>Gets whether cloud history was explicitly enabled for the local site.</summary>
-	internal bool UseCloudHistory { get; private set; }
+	internal bool UseCloudHistory
+		{
+		get; private set;
+		}
 	/// <summary>Gets the delay between completed local polls, in seconds.</summary>
 	internal int IntervalSeconds { get; private set; } = 15;
 	/// <summary>Gets whether local access was selected.</summary>
@@ -32,10 +40,10 @@ internal sealed class LocalConnectionSettings
 	/// <summary>Gets the protocol corresponding to the validated selection.</summary>
 	internal PowerwallLocalProtocol Protocol => Connection switch
 		{
-		"Gateway" => PowerwallLocalProtocol.Gateway,
-		"Signed LAN" => PowerwallLocalProtocol.TedapiSigned,
-		_ => throw new InvalidOperationException ("Select Gateway or Signed LAN for local access.")
-		};
+			"Gateway" => PowerwallLocalProtocol.Gateway,
+			"Signed LAN" => PowerwallLocalProtocol.TedapiSigned,
+			_ => throw new InvalidOperationException ("Select Gateway or Signed LAN for local access.")
+			};
 
 	/// <summary>Merges an installer update without changing the active settings.</summary>
 	/// <param name="values">Supplied configuration values.</param>

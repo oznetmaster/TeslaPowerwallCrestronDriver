@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 This changelog records shipped features, fixes, compatibility and runtime dependency changes. See [development and validation history](DEVELOPMENT-HISTORY.md) for tests, CI, build tooling and work not yet released.
 
+## [2.0.9](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v2.0.9) - 2026-11-10
+
+- Use TeslaPowerwallLibrary 2.5.1 in the driver and local provisioning tool.
+- Close connection admission and drain refresh/command work before retiring clients and their owned RSA signing key.
+- Reject retired token callbacks and post-shutdown client recreation; preserve existing connection settings and stored credentials.
+
 ## [2.0.8](https://github.com/oznetmaster/TeslaPowerwallCrestronDriver/releases/tag/v2.0.8) — 2026-11-02
 
 - Prevent negative battery percentages at or below the raw 5% reserve. Use TeslaPowerwallLibrary 2.5.0's validated fresh battery-level API for local availability, removing direct response parsing and duplicated scaling from the driver. Cloud readings inherit the same 0% floor through the library.
